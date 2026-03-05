@@ -11,6 +11,8 @@ from astral.sun import sun
 from timezonefinder import TimezoneFinder
 import pytz
 import io
+import re
+import csv
 
 # Cache for airport data
 _AIRPORT_CACHE = {}
@@ -32,20 +34,20 @@ def fetch_airport_data():
         response.raise_for_status()
         
         # Parse the CSV data
-        for line in response.text.strip().split('\n'):
-            parts = [p.strip().strip('"') for p in line.split(',')]
-            if len(parts) >= 7:
+        csv_reader = csv.reader(io.StringIO(response.text))
+        for row in csv_reader:
+            if len(row) >= 8:  # Ensure we have at least lat and lon
                 try:
-                    iata = parts[4]  # IATA code
-                    icao = parts[5]  # ICAO code
-                    name = parts[1]  # Airport name
-                    lat = float(parts[6])  # Latitude
-                    lon = float(parts[7])  # Longitude
+                    iata = row[4].strip()  # IATA code
+                    icao = row[5].strip()  # ICAO code
+                    name = row[1].strip()  # Airport name
+                    lat = float(row[6])  # Latitude
+                    lon = float(row[7])  # Longitude
                     
                     # Store airports with either IATA (3 letters) or ICAO (4 letters) codes
-                    if iata and len(iata) == 3:
+                    if iata and len(iata) == 3 and iata != '\\N':
                         _AIRPORT_CACHE[iata.upper()] = (lat, lon, name)
-                    if icao and len(icao) == 4:
+                    if icao and len(icao) == 4 and icao != '\\N':
                         _AIRPORT_CACHE[icao.upper()] = (lat, lon, name)
                 except (ValueError, IndexError):
                     continue
@@ -63,12 +65,27 @@ def get_airport_info(iata_code):
     iata_upper = iata_code.upper()
     if iata_upper in _AIRPORT_CACHE:
         return _AIRPORT_CACHE[iata_upper]
+    
+    # Try ICAO with K prefix for US airports if 3-letter code not found
+    if len(iata_upper) == 3:
+        icao_attempt = 'K' + iata_upper
+        if icao_attempt in _AIRPORT_CACHE:
+            return _AIRPORT_CACHE[icao_attempt]
+    
     return None
 
 def get_timezone(lat, lon):
     """Get timezone string from coordinates."""
     tf = TimezoneFinder()
     return tf.timezone_at(lat=lat, lng=lon)
+
+def format_gmt_time(local_time):
+    """Format GMT time with day indicator if different day."""
+    gmt_time = local_time.astimezone(pytz.UTC)
+    gmt_str = gmt_time.strftime('%H:%M GMT')
+    if local_time.date() != gmt_time.date():
+        gmt_str += " *"
+    return f"\033[92m{gmt_str}\033[0m"
 
 def calculate_sun_times(lat, lon, tz_str, date=None):
     """Calculate sunrise, sunset, and twilight times."""
@@ -129,10 +146,11 @@ def display_airport_info(iata_code):
         # print(f"Timezone: {tz_str}")
         # print(f"{'='*60}")
         print()
-        print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M:%S %Z')} (\033[92m{civil_dawn.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M:%S %Z')} (\033[92m{civil_dusk.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
+        print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
-        print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_before_sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_after_sunset.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
+        print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)})    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)})")
         print(f"{'='*60}")
+        print("* GMT time is on a different day than the local time")
         
         return True
     
@@ -153,6 +171,9 @@ def main():
     
     # Get user input
     airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): ").strip()
+    
+    # Ignore non-letter characters
+    airport_list = re.sub(r'[^a-zA-Z\s]', ' ', airport_list)
     
     if not airport_list:
         print("No airports entered. Exiting.")
