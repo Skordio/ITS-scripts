@@ -107,8 +107,8 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
         "sunset": sun_times["sunset"],
     }
 
-def display_airport_info(iata_code):
-    """Fetch and display info for an airport."""
+def display_airport_info(iata_code, date=None):
+    """Fetch and display info for an airport on a given date."""
     airport_info = get_airport_info(iata_code)
     
     if not airport_info:
@@ -124,8 +124,8 @@ def display_airport_info(iata_code):
             print(f"✗ Could not determine timezone for {iata_code}")
             return False
         
-        # Get sun times
-        sun_times = calculate_sun_times(lat, lon, tz_str)
+        # Get sun times for requested date (None means today)
+        sun_times = calculate_sun_times(lat, lon, tz_str, date)
         
         # Create timezone-aware datetimes
         tz = pytz.timezone(tz_str)
@@ -170,6 +170,17 @@ def main():
         return
     
     # Get user input
+    # Ask for date first
+    date_input = input("\nEnter a date (YYYY-MM-DD) or leave blank for today: ").strip()
+    if date_input:
+        try:
+            date_obj = datetime.strptime(date_input, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD.")
+            return
+    else:
+        date_obj = None
+
     airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): ").strip()
     
     # Ignore non-letter characters
@@ -184,7 +195,7 @@ def main():
     # Process each airport
     successful = 0
     for airport in airports:
-        if display_airport_info(airport.strip()):
+        if display_airport_info(airport.strip(), date_obj):
             successful += 1
     
     print()
