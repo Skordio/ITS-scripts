@@ -117,10 +117,11 @@ def display_airport_info(iata_code):
         civil_dawn = sun_times["civil_twilight_begin"].astimezone(tz)
         civil_dusk = sun_times["civil_twilight_end"].astimezone(tz)
         sunrise = sun_times["sunrise"].astimezone(tz)
+        sunset = sun_times["sunset"].astimezone(tz)
         
         # Calculate 1 hour before/after sunrise
         one_hr_before_sunrise = sunrise - timedelta(hours=1)
-        one_hr_after_sunrise = sunrise + timedelta(hours=1)
+        one_hr_after_sunset = sunset + timedelta(hours=1)
         
         # Display info
         print(f"\n{'='*60}")
@@ -131,7 +132,7 @@ def display_airport_info(iata_code):
         print(f"Civil Twilight End:    {civil_dusk.strftime('%H:%M:%S %Z')} ({civil_dusk.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"1 Hour Before Sunrise: {one_hr_before_sunrise.strftime('%H:%M:%S %Z')} ({one_hr_before_sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
-        print(f"1 Hour After Sunrise:  {one_hr_after_sunrise.strftime('%H:%M:%S %Z')} ({one_hr_after_sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
+        print(f"1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M:%S %Z')} ({one_hr_after_sunset.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"{'='*60}")
         
         return True
