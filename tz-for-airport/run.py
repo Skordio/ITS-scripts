@@ -126,13 +126,12 @@ def display_airport_info(iata_code):
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
-        print(f"Timezone: {tz_str}")
-        print(f"{'='*60}")
-        print(f"Civil Twilight Begin:  {civil_dawn.strftime('%H:%M:%S %Z')} (\033[92m{civil_dawn.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
-        print(f"Civil Twilight End:    {civil_dusk.strftime('%H:%M:%S %Z')} (\033[92m{civil_dusk.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
+        # print(f"Timezone: {tz_str}")
+        # print(f"{'='*60}")
+        print()
+        print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M:%S %Z')} (\033[92m{civil_dawn.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M:%S %Z')} (\033[92m{civil_dusk.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
-        print(f"1 Hour Before Sunrise: {one_hr_before_sunrise.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_before_sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
-        print(f"1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_after_sunset.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
+        print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_before_sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M:%S %Z')} (\033[92m{one_hr_after_sunset.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')}\033[0m)")
         print(f"{'='*60}")
         
         return True
@@ -167,9 +166,8 @@ def main():
         if display_airport_info(airport.strip()):
             successful += 1
     
-    print(f"\n{'='*60}")
+    print()
     print(f"Processed {successful}/{len(airports)} airports successfully")
-    print(f"{'='*60}\n")
 
 if __name__ == "__main__":
     main()
