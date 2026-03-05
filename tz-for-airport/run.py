@@ -37,13 +37,16 @@ def fetch_airport_data():
             if len(parts) >= 7:
                 try:
                     iata = parts[4]  # IATA code
+                    icao = parts[5]  # ICAO code
                     name = parts[1]  # Airport name
                     lat = float(parts[6])  # Latitude
                     lon = float(parts[7])  # Longitude
                     
-                    # Only store airports with IATA codes
+                    # Store airports with either IATA (3 letters) or ICAO (4 letters) codes
                     if iata and len(iata) == 3:
                         _AIRPORT_CACHE[iata.upper()] = (lat, lon, name)
+                    if icao and len(icao) == 4:
+                        _AIRPORT_CACHE[icao.upper()] = (lat, lon, name)
                 except (ValueError, IndexError):
                     continue
         
@@ -149,7 +152,7 @@ def main():
         return
     
     # Get user input
-    airport_list = input("\nEnter airport codes separated by spaces (e.g., JFK LAX ORD): ").strip()
+    airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): ").strip()
     
     if not airport_list:
         print("No airports entered. Exiting.")
