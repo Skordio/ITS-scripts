@@ -77,10 +77,12 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
     
     # Get sun times
     sun_times = sun(location.observer, date=date)
+
+    # print(f"{sun_times}")
     
     return {
-        "civil_twilight_begin": sun_times["civil_dawn"],
-        "civil_twilight_end": sun_times["civil_dusk"],
+        "civil_twilight_begin": sun_times["sunrise"] - timedelta(minutes=30),  # Civil dawn is typically 30 minutes before sunrise
+        "civil_twilight_end": sun_times["sunset"] + timedelta(minutes=30),  # Civil dusk is typically 30 minutes after sunset
         "sunrise": sun_times["sunrise"],
         "sunset": sun_times["sunset"],
     }
@@ -122,9 +124,9 @@ def display_airport_info(iata_code):
         print(f"Airport: {iata_code} - {name}")
         print(f"Timezone: {tz_str}")
         print(f"{'='*60}")
-        print(f"Civil Twilight Begin: {civil_dawn.strftime('%H:%M:%S')}")
-        print(f"Civil Twilight End:   {civil_dusk.strftime('%H:%M:%S')}")
-        print(f"Sunrise:              {sunrise.strftime('%H:%M:%S')}")
+        print(f"Civil Twilight Begin:  {civil_dawn.strftime('%H:%M:%S')}")
+        print(f"Civil Twilight End:    {civil_dusk.strftime('%H:%M:%S')}")
+        # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S')}")
         print(f"1 Hour Before Sunrise: {one_hr_before_sunrise.strftime('%H:%M:%S')}")
         print(f"1 Hour After Sunrise:  {one_hr_after_sunrise.strftime('%H:%M:%S')}")
         print(f"{'='*60}")
