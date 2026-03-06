@@ -146,6 +146,7 @@ def display_airport_distances(airport_codes):
             print(f"    Driving Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
             print(f"    Estimated Flight Time: {flight_hours}h {flight_minutes}m")
             print()
+            print(f"For a more accurate driving route, search Google Maps for: \n{code1} airport to {code2} airport")
     
     print(f"{'='*80}")
     print("Note: Distances are estimated based on great-circle distance × 1.25")
