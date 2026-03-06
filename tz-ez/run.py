@@ -184,7 +184,7 @@ def main():
     airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): ").strip()
     
     # Ignore non-letter characters
-    airport_list = re.sub(r'[^a-zA-Z\s]', ' ', airport_list)
+    airport_list = re.sub(r'[^a-zA-Z0-9\s]', ' ', airport_list)
     
     if not airport_list:
         print("No airports entered. Exiting.")
