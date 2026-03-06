@@ -101,8 +101,8 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
     # print(f"{sun_times}")
     
     return {
-        "civil_twilight_begin": sun_times["sunrise"] - timedelta(minutes=30),  # Civil dawn is typically 30 minutes before sunrise
-        "civil_twilight_end": sun_times["sunset"] + timedelta(minutes=30),  # Civil dusk is typically 30 minutes after sunset
+        "civil_twilight_begin": sun_times["sunrise"] - timedelta(minutes=30),
+        "civil_twilight_end": sun_times["sunset"] + timedelta(minutes=30),  
         "sunrise": sun_times["sunrise"],
         "sunset": sun_times["sunset"],
     }
@@ -143,14 +143,14 @@ def display_airport_info(iata_code, date=None):
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
-        # print(f"Timezone: {tz_str}")
+        print(f"Timezone: {tz_str}")
         # print(f"{'='*60}")
         print()
         print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)})    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)})")
-        print(f"{'='*60}")
-        print("* GMT time is on a different day than the local time")
+        # print(f"{'='*60}")
+        # print("* GMT time is on a different day than the local time")
         
         return True
     
