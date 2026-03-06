@@ -95,14 +95,17 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
     # Create location info
     location = LocationInfo("Airport", "Region", timezone=tz_str, latitude=lat, longitude=lon)
     
-    # Get sun times
+    # Get sun times (may include 'dawn' and 'dusk' for civil twilight).
+    # Do NOT fall back to a fixed offset if dawn/dusk are missing — return
+    # None so the caller can choose to omit displaying civil twilight.
     sun_times = sun(location.observer, date=date)
 
-    # print(f"{sun_times}")
-    
+    dawn = sun_times.get("dawn")
+    dusk = sun_times.get("dusk")
+
     return {
-        "civil_twilight_begin": sun_times["sunrise"] - timedelta(minutes=30),
-        "civil_twilight_end": sun_times["sunset"] + timedelta(minutes=30),  
+        "civil_twilight_begin": dawn,
+        "civil_twilight_end": dusk,
         "sunrise": sun_times["sunrise"],
         "sunset": sun_times["sunset"],
     }
@@ -130,9 +133,14 @@ def display_airport_info(iata_code, date=None):
         # Create timezone-aware datetimes
         tz = pytz.timezone(tz_str)
         
-        # Convert times to local timezone
-        civil_dawn = sun_times["civil_twilight_begin"].astimezone(tz)
-        civil_dusk = sun_times["civil_twilight_end"].astimezone(tz)
+        # Convert times to local timezone (only convert civil twilight if present)
+        civil_dawn = None
+        civil_dusk = None
+        if sun_times.get("civil_twilight_begin"):
+            civil_dawn = sun_times["civil_twilight_begin"].astimezone(tz)
+        if sun_times.get("civil_twilight_end"):
+            civil_dusk = sun_times["civil_twilight_end"].astimezone(tz)
+
         sunrise = sun_times["sunrise"].astimezone(tz)
         sunset = sun_times["sunset"].astimezone(tz)
         
@@ -144,9 +152,10 @@ def display_airport_info(iata_code, date=None):
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
         print(f"Timezone: {tz_str}")
-        # print(f"{'='*60}")
         print()
-        print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
+        # Only show civil twilight if both dawn and dusk are available
+        if civil_dawn and civil_dusk:
+            print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)})    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)})")
         # print(f"{'='*60}")
