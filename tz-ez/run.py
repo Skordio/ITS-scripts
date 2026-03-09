@@ -141,8 +141,8 @@ def display_airport_info(iata_code, date=None):
         if sun_times.get("civil_twilight_end"):
             civil_dusk = sun_times["civil_twilight_end"].astimezone(tz)
 
-        sunrise = sun_times["sunrise"].astimezone(tz)
-        sunset = sun_times["sunset"].astimezone(tz)
+        sunrise = sun_times.get("sunrise").astimezone(tz)
+        sunset = sun_times.get("sunset").astimezone(tz)
         
         # Calculate 1 hour before/after sunrise
         one_hr_before_sunrise = sunrise - timedelta(hours=1)
