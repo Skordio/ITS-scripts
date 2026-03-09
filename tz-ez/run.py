@@ -4,6 +4,7 @@ Requires: astral, timezonefinder, requests
 Install with: pip install astral timezonefinder requests
 """
 
+import os
 import requests
 from datetime import datetime, timedelta
 from astral import LocationInfo
@@ -16,6 +17,9 @@ import csv
 
 # Cache for airport data
 _AIRPORT_CACHE = {}
+
+# Local file for manually added airports
+_USER_AIRPORTS_FILE = os.path.join(os.path.dirname(__file__), "user_airports.csv")
 
 def fetch_airport_data():
     """Fetch airport data from OpenFlights database on GitHub."""
@@ -52,13 +56,93 @@ def fetch_airport_data():
                 except (ValueError, IndexError):
                     continue
         
+        # Load any user-defined airports, overriding duplicates from OpenFlights
+        load_user_airports()
+
         print(f"Successfully loaded {len(_AIRPORT_CACHE)} airports from OpenFlights database.\n")
         return _AIRPORT_CACHE
     
     except requests.exceptions.RequestException as e:
         print(f"✗ Error fetching airport data: {e}")
-        print("✗ Cannot proceed without airport data.")
+        print("✗ Could not fetch airport data. Loading locally stored airports (if any)...")
+        load_user_airports()
+        if _AIRPORT_CACHE:
+            print(f"Loaded {len(_AIRPORT_CACHE)} locally stored airports.\n")
+            return _AIRPORT_CACHE
+        print("✗ No local airport data available. Cannot proceed.")
         return None
+
+
+def load_user_airports():
+    """Load manually added airport entries from a local CSV file."""
+    if not os.path.isfile(_USER_AIRPORTS_FILE):
+        return
+
+    try:
+        with open(_USER_AIRPORTS_FILE, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                # Expected columns: code, lat, lon, name
+                if len(row) < 4:
+                    continue
+                code, lat_str, lon_str, name = row[:4]
+                code = code.strip().upper()
+                try:
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                except ValueError:
+                    continue
+                if code:
+                    _AIRPORT_CACHE[code] = (lat, lon, name)
+    except Exception:
+        # Ignore malformed user file; we don't want to crash the script.
+        pass
+
+
+def save_user_airport(code, lat, lon, name):
+    """Append a manually added airport entry to the local CSV file."""
+    try:
+        header = False
+        if not os.path.isfile(_USER_AIRPORTS_FILE):
+            header = True
+        with open(_USER_AIRPORTS_FILE, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if header:
+                writer.writerow(["code", "lat", "lon", "name"])
+            writer.writerow([code.upper(), lat, lon, name or ""])
+    except Exception:
+        # If we can't write, just keep it in memory.
+        pass
+
+
+def prompt_add_airport(iata_code):
+    """Prompt the user to manually add an airport when not found."""
+    print(f"\nAirport '{iata_code}' not found in database.")
+    resp = input("Would you like to add it manually? (y/N): ").strip().lower()
+    if resp not in ('y', 'yes'):
+        return False
+
+    while True:
+        coords = input("Enter latitude and longitude separated by a comma (e.g. 40.6413,-73.7781), or leave blank to cancel: ").strip()
+        if not coords:
+            return False
+        parts = [p.strip() for p in coords.split(',') if p.strip()]
+        if len(parts) != 2:
+            print("Please enter two values separated by a comma.")
+            continue
+        try:
+            lat = float(parts[0])
+            lon = float(parts[1])
+            break
+        except ValueError:
+            print("Invalid coordinates. Please enter numeric latitude and longitude.")
+
+    name = input("Optional airport name (press Enter to skip): ").strip()
+    _AIRPORT_CACHE[iata_code.upper()] = (lat, lon, name or iata_code.upper())
+    save_user_airport(iata_code, lat, lon, name)
+    print(f"Added {iata_code.upper()} -> {lat},{lon} to local airport list.\n")
+    return True
+
 
 def get_airport_info(iata_code):
     """Get latitude and longitude for an airport code.
@@ -120,6 +204,14 @@ def display_airport_info(iata_code, date=None):
     """Fetch and display info for an airport on a given date."""
     airport_info = get_airport_info(iata_code)
     
+    # If not found in OpenFlights, allow manual entry and retry.
+    if not airport_info:
+        if prompt_add_airport(iata_code):
+            airport_info = get_airport_info(iata_code)
+        else:
+            print(f"✗ Airport {iata_code} not found in database")
+            return False
+
     if not airport_info:
         print(f"✗ Airport {iata_code} not found in database")
         return False
