@@ -1,75 +1,22 @@
 """
 Script to calculate driving distances between airports.
-Requires: requests
-Install with: pip install requests
+Requires: tz_ez (for airport lookup data)
 """
 
-import requests
-import io
+import os
+import sys
 import re
-import csv
 import math
 
-# Cache for airport data
-_AIRPORT_CACHE = {}
+# Ensure the workspace root is on sys.path so we can import tz_ez when running as a script.
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
-def fetch_airport_data():
-    """Fetch airport data from OpenFlights database on GitHub."""
-    global _AIRPORT_CACHE
-    
-    if _AIRPORT_CACHE:
-        return _AIRPORT_CACHE
-    
-    print("Fetching airport data from OpenFlights database...")
-    
-    try:
-        # OpenFlights data: https://openflights.org/data.html
-        # Format: Airport ID, Name, City, Country, IATA, ICAO, Latitude, Longitude, Altitude, Timezone, DST, Timezone (IANA)
-        url = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        
-        # Parse the CSV data
-        csv_reader = csv.reader(io.StringIO(response.text))
-        for row in csv_reader:
-            if len(row) >= 8:  # Ensure we have at least lat and lon
-                try:
-                    iata = row[4].strip()  # IATA code
-                    icao = row[5].strip()  # ICAO code
-                    name = row[1].strip()  # Airport name
-                    lat = float(row[6])  # Latitude
-                    lon = float(row[7])  # Longitude
-                    
-                    # Store airports with either IATA (3 letters) or ICAO (4 letters) codes
-                    if iata and len(iata) == 3 and iata != '\\N':
-                        _AIRPORT_CACHE[iata.upper()] = (lat, lon, name)
-                    if icao and len(icao) == 4 and icao != '\\N':
-                        _AIRPORT_CACHE[icao.upper()] = (lat, lon, name)
-                except (ValueError, IndexError):
-                    continue
-        
-        print(f"Successfully loaded {len(_AIRPORT_CACHE)} airports from OpenFlights database.\n")
-        return _AIRPORT_CACHE
-    
-    except requests.exceptions.RequestException as e:
-        print(f"✗ Error fetching airport data: {e}")
-        print("✗ Cannot proceed without airport data.")
-        return None
+from tz_ez.airport_data import AirportData
 
-def get_airport_info(iata_code):
-    """Get latitude and longitude for an airport code."""
-    iata_upper = iata_code.upper()
-    if iata_upper in _AIRPORT_CACHE:
-        return _AIRPORT_CACHE[iata_upper]
-    
-    # Try ICAO with K prefix for US airports if 3-letter code not found
-    if len(iata_upper) == 3:
-        icao_attempt = 'K' + iata_upper
-        if icao_attempt in _AIRPORT_CACHE:
-            return _AIRPORT_CACHE[icao_attempt]
-    
-    return None
 
+# The AirportData class replaces the old global cache and fetch logic.
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the great-circle distance between two points on Earth using the Haversine formula.
@@ -103,16 +50,16 @@ def estimate_flight_time(distance_miles):
     minutes = int((flight_hours - hours) * 60)
     return hours, minutes
 
-def display_airport_distances(airport_codes):
+def display_airport_distances(airport_data: AirportData, airport_codes):
     """Calculate and display driving distances between all pairs of airports."""
     if len(airport_codes) < 2:
         print("✗ Please enter at least 2 airport codes to calculate distances.")
         return False
-    
+
     # Get coordinates for all airports
     airports = {}
     for code in airport_codes:
-        info = get_airport_info(code.strip())
+        info = airport_data.get_airport_info(code.strip())
         if not info:
             print(f"✗ Airport {code} not found in database")
             return False
@@ -161,25 +108,24 @@ def main():
     print("Airport Driving Distance Calculator")
     print("-" * 60)
     
-    # Fetch airport data from internet
-    airport_data = fetch_airport_data()
-    if not airport_data:
+    airport_data = AirportData()
+    if not airport_data.fetch_airport_data():
         return
-    
+
     # Get airport codes from user
     airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK LAX SEA): ").strip()
-    
+
     # Ignore non-letter characters
     airport_list = re.sub(r'[^a-zA-Z\s]', ' ', airport_list)
-    
+
     if not airport_list:
         print("No airports entered. Exiting.")
         return
-    
+
     airports = airport_list.split()
-    
+
     # Display distances
-    display_airport_distances(airports)
+    display_airport_distances(airport_data, airports)
 
 if __name__ == "__main__":
     main()

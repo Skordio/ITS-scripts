@@ -4,165 +4,14 @@ Requires: astral, timezonefinder, requests
 Install with: pip install astral timezonefinder requests
 """
 
-import os
-import requests
 from datetime import datetime, timedelta
 from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
 import pytz
-import io
-import re
-import csv
 
-# Cache for airport data
-_AIRPORT_CACHE = {}
+from airport_data import AirportData
 
-# Local file for manually added airports
-_USER_AIRPORTS_FILE = os.path.join(os.path.dirname(__file__), "user_airports.csv")
-
-def fetch_airport_data():
-    """Fetch airport data from OpenFlights database on GitHub."""
-    global _AIRPORT_CACHE
-    
-    if _AIRPORT_CACHE:
-        return _AIRPORT_CACHE
-    
-    print("Fetching airport data from OpenFlights database...")
-    
-    try:
-        # OpenFlights data: https://openflights.org/data.html
-        # Format: Airport ID, Name, City, Country, IATA, ICAO, Latitude, Longitude, Altitude, Timezone, DST, Timezone (IANA)
-        url = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        
-        # Parse the CSV data
-        csv_reader = csv.reader(io.StringIO(response.text))
-        for row in csv_reader:
-            if len(row) >= 8:  # Ensure we have at least lat and lon
-                try:
-                    iata = row[4].strip()  # IATA code
-                    icao = row[5].strip()  # ICAO code
-                    name = row[1].strip()  # Airport name
-                    lat = float(row[6])  # Latitude
-                    lon = float(row[7])  # Longitude
-                    
-                    # Store airports with either IATA (3 letters) or ICAO (4 letters) codes
-                    if iata and len(iata) == 3 and iata != '\\N':
-                        _AIRPORT_CACHE[iata.upper()] = (lat, lon, name)
-                    if icao and len(icao) == 4 and icao != '\\N':
-                        _AIRPORT_CACHE[icao.upper()] = (lat, lon, name)
-                except (ValueError, IndexError):
-                    continue
-        
-        # Load any user-defined airports, overriding duplicates from OpenFlights
-        load_user_airports()
-
-        print(f"Successfully loaded {len(_AIRPORT_CACHE)} airports from OpenFlights database.\n")
-        return _AIRPORT_CACHE
-    
-    except requests.exceptions.RequestException as e:
-        print(f"✗ Error fetching airport data: {e}")
-        print("✗ Could not fetch airport data. Loading locally stored airports (if any)...")
-        load_user_airports()
-        if _AIRPORT_CACHE:
-            print(f"Loaded {len(_AIRPORT_CACHE)} locally stored airports.\n")
-            return _AIRPORT_CACHE
-        print("✗ No local airport data available. Cannot proceed.")
-        return None
-
-
-def load_user_airports():
-    """Load manually added airport entries from a local CSV file."""
-    if not os.path.isfile(_USER_AIRPORTS_FILE):
-        return
-
-    try:
-        with open(_USER_AIRPORTS_FILE, newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                # Expected columns: code, lat, lon, name
-                if len(row) < 4:
-                    continue
-                code, lat_str, lon_str, name = row[:4]
-                code = code.strip().upper()
-                try:
-                    lat = float(lat_str)
-                    lon = float(lon_str)
-                except ValueError:
-                    continue
-                if code:
-                    _AIRPORT_CACHE[code] = (lat, lon, name)
-    except Exception:
-        # Ignore malformed user file; we don't want to crash the script.
-        pass
-
-
-def save_user_airport(code, lat, lon, name):
-    """Append a manually added airport entry to the local CSV file."""
-    try:
-        header = False
-        if not os.path.isfile(_USER_AIRPORTS_FILE):
-            header = True
-        with open(_USER_AIRPORTS_FILE, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if header:
-                writer.writerow(["code", "lat", "lon", "name"])
-            writer.writerow([code.upper(), lat, lon, name or ""])
-    except Exception:
-        # If we can't write, just keep it in memory.
-        pass
-
-
-def prompt_add_airport(iata_code):
-    """Prompt the user to manually add an airport when not found."""
-    print(f"\nAirport '{iata_code}' not found in database.")
-    resp = input("Would you like to add it manually? (y/N): ").strip().lower()
-    if resp not in ('y', 'yes'):
-        return False
-
-    while True:
-        coords = input("Enter latitude and longitude separated by a comma (e.g. 40.6413,-73.7781), or leave blank to cancel: ").strip()
-        if not coords:
-            return False
-        parts = [p.strip() for p in coords.split(',') if p.strip()]
-        if len(parts) != 2:
-            print("Please enter two values separated by a comma.")
-            continue
-        try:
-            lat = float(parts[0])
-            lon = float(parts[1])
-            break
-        except ValueError:
-            print("Invalid coordinates. Please enter numeric latitude and longitude.")
-
-    name = input("Optional airport name (press Enter to skip): ").strip()
-    _AIRPORT_CACHE[iata_code.upper()] = (lat, lon, name or iata_code.upper())
-    save_user_airport(iata_code, lat, lon, name)
-    print(f"Added {iata_code.upper()} -> {lat},{lon} to local airport list.\n")
-    return True
-
-
-def get_airport_info(iata_code):
-    """Get latitude and longitude for an airport code.
-
-    If a 3-letter code is provided, first try the US ICAO form ("K" + code),
-    then fall back to the international IATA form.
-    """
-    iata_upper = iata_code.upper()
-
-    # Prefer US airports (ICAO Kxxx) when a 3-letter code is supplied.
-    if len(iata_upper) == 3:
-        icao_attempt = 'K' + iata_upper
-        if icao_attempt in _AIRPORT_CACHE:
-            return _AIRPORT_CACHE[icao_attempt]
-
-    # Fallback to IATA or full ICAO codes.
-    if iata_upper in _AIRPORT_CACHE:
-        return _AIRPORT_CACHE[iata_upper]
-
-    return None
 
 def get_timezone(lat, lon):
     """Get timezone string from coordinates."""
@@ -200,14 +49,14 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
         "sunset": sun_times["sunset"],
     }
 
-def display_airport_info(iata_code, date=None):
+def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
     """Fetch and display info for an airport on a given date."""
-    airport_info = get_airport_info(iata_code)
-    
+    airport_info = airport_data.get_airport_info(iata_code)
+
     # If not found in OpenFlights, allow manual entry and retry.
     if not airport_info:
-        if prompt_add_airport(iata_code):
-            airport_info = get_airport_info(iata_code)
+        if airport_data.prompt_add_airport(iata_code):
+            airport_info = airport_data.get_airport_info(iata_code)
         else:
             print(f"✗ Airport {iata_code} not found in database")
             return False
@@ -215,22 +64,22 @@ def display_airport_info(iata_code, date=None):
     if not airport_info:
         print(f"✗ Airport {iata_code} not found in database")
         return False
-    
+
     lat, lon, name = airport_info
-    
+
     try:
         # Get timezone
         tz_str = get_timezone(lat, lon)
         if not tz_str:
             print(f"✗ Could not determine timezone for {iata_code}")
             return False
-        
+
         # Get sun times for requested date (None means today)
         sun_times = calculate_sun_times(lat, lon, tz_str, date)
-        
+
         # Create timezone-aware datetimes
         tz = pytz.timezone(tz_str)
-        
+
         # Convert times to local timezone (only convert civil twilight if present)
         civil_dawn = None
         civil_dusk = None
@@ -239,13 +88,13 @@ def display_airport_info(iata_code, date=None):
         if sun_times.get("civil_twilight_end"):
             civil_dusk = sun_times["civil_twilight_end"].astimezone(tz)
 
-        sunrise = sun_times.get("sunrise").astimezone(tz)
-        sunset = sun_times.get("sunset").astimezone(tz)
-        
+        sunrise = sun_times.get("sunrise").astimezone(tz) #type: ignore
+        sunset = sun_times.get("sunset").astimezone(tz) #type: ignore
+
         # Calculate 1 hour before/after sunrise
         one_hr_before_sunrise = sunrise - timedelta(hours=1)
         one_hr_after_sunset = sunset + timedelta(hours=1)
-        
+
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
@@ -258,9 +107,9 @@ def display_airport_info(iata_code, date=None):
         print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)})    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)})")
         # print(f"{'='*60}")
         # print("* GMT time is on a different day than the local time")
-        
+
         return True
-    
+
     except Exception as e:
         print(f"✗ Error processing {iata_code}: {e}")
         raise e
@@ -271,11 +120,10 @@ def main():
     print("Airport Timezone and Dawn/Sunrise Information")
     print("-" * 60)
     
-    # Fetch airport data from internet
-    airport_data = fetch_airport_data()
-    if not airport_data:
+    airport_data = AirportData()
+    if not airport_data.fetch_airport_data():
         return
-    
+
     # Get user input
     # Ask for date first
     date_input = input("\nEnter a date (YYYY-MM-DD) or leave blank for today: ").strip()
@@ -288,21 +136,14 @@ def main():
     else:
         date_obj = None
 
-    airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): ").strip()
-    
-    # Ignore non-letter characters
-    airport_list = re.sub(r'[^a-zA-Z0-9\s]', ' ', airport_list)
-    
-    if not airport_list:
-        print("No airports entered. Exiting.")
+    airports = airport_data.prompt_airports_from_user()
+    if not airports:
         return
-    
-    airports = airport_list.split()
     
     # Process each airport
     successful = 0
     for airport in airports:
-        if display_airport_info(airport.strip(), date_obj):
+        if display_airport_info(airport_data, airport.strip(), date_obj):
             successful += 1
     
     print()
