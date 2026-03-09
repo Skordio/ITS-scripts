@@ -61,17 +61,23 @@ def fetch_airport_data():
         return None
 
 def get_airport_info(iata_code):
-    """Get latitude and longitude for an airport code."""
+    """Get latitude and longitude for an airport code.
+
+    If a 3-letter code is provided, first try the US ICAO form ("K" + code),
+    then fall back to the international IATA form.
+    """
     iata_upper = iata_code.upper()
-    if iata_upper in _AIRPORT_CACHE:
-        return _AIRPORT_CACHE[iata_upper]
-    
-    # Try ICAO with K prefix for US airports if 3-letter code not found
+
+    # Prefer US airports (ICAO Kxxx) when a 3-letter code is supplied.
     if len(iata_upper) == 3:
         icao_attempt = 'K' + iata_upper
         if icao_attempt in _AIRPORT_CACHE:
             return _AIRPORT_CACHE[icao_attempt]
-    
+
+    # Fallback to IATA or full ICAO codes.
+    if iata_upper in _AIRPORT_CACHE:
+        return _AIRPORT_CACHE[iata_upper]
+
     return None
 
 def get_timezone(lat, lon):
