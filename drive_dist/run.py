@@ -111,18 +111,13 @@ def main():
     airport_data = AirportData()
     if not airport_data.fetch_airport_data():
         return
-
-    # Get airport codes from user
-    airport_list = input("\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK LAX SEA): ").strip()
-
+    
     # Ignore non-letter characters
-    airport_list = re.sub(r'[^a-zA-Z\s]', ' ', airport_list)
+    airports = airport_data.prompt_airports_from_user()
 
-    if not airport_list:
+    if not airports:
         print("No airports entered. Exiting.")
         return
-
-    airports = airport_list.split()
 
     # Display distances
     display_airport_distances(airport_data, airports)
