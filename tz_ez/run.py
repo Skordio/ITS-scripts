@@ -6,7 +6,7 @@ Install with: pip install astral timezonefinder requests
 
 from datetime import datetime, timedelta
 from astral import LocationInfo
-from astral.sun import sun
+from astral.sun import sun, sunrise, sunset, dawn, dusk
 from timezonefinder import TimezoneFinder
 import pytz
 
@@ -27,26 +27,47 @@ def format_gmt_time(local_time):
     return f"\033[92m{gmt_str}\033[0m"
 
 def calculate_sun_times(lat, lon, tz_str, date=None):
-    """Calculate sunrise, sunset, and twilight times."""
+    """Calculate sunrise, sunset, and twilight times.
+
+    Astral may raise a ValueError when dawn/dusk do not exist (e.g. polar day/night).
+    This function is resilient: it will try adjacent dates for sunrise/sunset and
+    will return None for civil twilight if it cannot be computed.
+    """
     if date is None:
         date = datetime.now().date()
-    
+
     # Create location info
     location = LocationInfo("Airport", "Region", timezone=tz_str, latitude=lat, longitude=lon)
-    
-    # Get sun times (may include 'dawn' and 'dusk' for civil twilight).
-    # Do NOT fall back to a fixed offset if dawn/dusk are missing — return
-    # None so the caller can choose to omit displaying civil twilight.
-    sun_times = sun(location.observer, date=date)
 
-    dawn = sun_times.get("dawn")
-    dusk = sun_times.get("dusk")
+    def _try_adjacent_dates(fn):
+        """Try to compute a sun time for the requested date, falling back to adjacent dates."""
+        for d in (date, date - timedelta(days=1), date + timedelta(days=1)):
+            try:
+                return fn(location.observer, date=d, tzinfo=tz_str)
+            except ValueError:
+                continue
+        # If we fall through, there was no valid time on any of the checked dates.
+        raise
+
+    # Compute sunrise/sunset (required). If it fails, let the caller handle it.
+    sunrise_time = _try_adjacent_dates(sunrise)
+    sunset_time = _try_adjacent_dates(sunset)
+
+    # Civil twilight (dawn/dusk) is optional; it may not exist at high latitudes.
+    civil_dawn = None
+    civil_dusk = None
+    try:
+        civil_dawn = dawn(location.observer, date=date, tzinfo=tz_str)
+        civil_dusk = dusk(location.observer, date=date, tzinfo=tz_str)
+    except ValueError:
+        # No civil twilight on this date (e.g. polar day/night). That's okay.
+        pass
 
     return {
-        "civil_twilight_begin": dawn,
-        "civil_twilight_end": dusk,
-        "sunrise": sun_times["sunrise"],
-        "sunset": sun_times["sunset"],
+        "civil_twilight_begin": civil_dawn,
+        "civil_twilight_end": civil_dusk,
+        "sunrise": sunrise_time,
+        "sunset": sunset_time,
     }
 
 def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
@@ -95,6 +116,11 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         one_hr_before_sunrise = sunrise - timedelta(hours=1)
         one_hr_after_sunset = sunset + timedelta(hours=1)
 
+        # Add a note if sunrise/sunset come from a different date (e.g. polar day/night fallbacks)
+        date_note = date if date is not None else datetime.now().date()
+        sunrise_note = "" if sunrise.date() == date_note else f" (using {sunrise.date()})"
+        sunset_note = "" if sunset.date() == date_note else f" (using {sunset.date()})"
+
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
@@ -104,7 +130,7 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         if civil_dawn and civil_dusk:
             print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
-        print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)})    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)})")
+        print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)}){sunrise_note}    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)}){sunset_note}")
         # print(f"{'='*60}")
         # print("* GMT time is on a different day than the local time")
 
@@ -112,7 +138,6 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
 
     except Exception as e:
         print(f"✗ Error processing {iata_code}: {e}")
-        raise e
         return False
 
 def main():
@@ -134,7 +159,7 @@ def main():
             print("Invalid date format. Please use YYYY-MM-DD.")
             return
     else:
-        date_obj = None
+        date_obj = datetime.now().date()
 
     airports = airport_data.prompt_airports_from_user()
     if not airports:
