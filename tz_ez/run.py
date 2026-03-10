@@ -101,6 +101,25 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         # Create timezone-aware datetimes
         tz = pytz.timezone(tz_str)
 
+        # Determine a sample datetime for determining tz abbreviation / offset
+        date_note = date if date is not None else datetime.now().date()
+        try:
+            sample_dt = tz.localize(datetime(date_note.year, date_note.month, date_note.day, 12, 0))
+        except Exception:
+            # In rare cases (ambiguous/non-existent times), fall back to now
+            sample_dt = datetime.now(tz)
+
+        tz_abbrev = sample_dt.tzname() or ""
+        offset = sample_dt.utcoffset() or timedelta(0)
+        total_minutes = int(offset.total_seconds() // 60)
+        sign = "+" if total_minutes >= 0 else "-"
+        abs_minutes = abs(total_minutes)
+        offset_hours = abs_minutes // 60
+        offset_minutes = abs_minutes % 60
+        gmt_offset = f"GMT{sign}{offset_hours}"
+        if offset_minutes:
+            gmt_offset += f":{offset_minutes:02d}"
+
         # Convert times to local timezone (only convert civil twilight if present)
         civil_dawn = None
         civil_dusk = None
@@ -124,7 +143,7 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
-        print(f"Timezone: {tz_str}")
+        print(f"Timezone: {tz_str} ({tz_abbrev}, {gmt_offset})")
         print()
         # Only show civil twilight if both dawn and dusk are available
         if civil_dawn and civil_dusk:
