@@ -143,7 +143,7 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         # Display info
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
-        print(f"Timezone: {tz_str} ({tz_abbrev}, {gmt_offset})")
+        print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print()
         # Only show civil twilight if both dawn and dusk are available
         if civil_dawn and civil_dusk:
@@ -170,12 +170,29 @@ def main():
 
     # Get user input
     # Ask for date first
-    date_input = input("\nEnter a date (YYYY-MM-DD) or leave blank for today: ").strip()
+    date_input = input("\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today: ").strip()
     if date_input:
         try:
-            date_obj = datetime.strptime(date_input, "%Y-%m-%d").date()
+            # Support YYYY-MM-DD (full year) or MM-DD (assumes current year)
+            if "-" in date_input:
+                parts = date_input.split("-")
+            elif "/" in date_input:
+                parts = date_input.split("/")
+            else:
+                raise ValueError("Invalid delimiter")
+
+            if len(parts) == 2:
+                # MM-DD (assume current year)
+                month, day = map(int, parts)
+                year = datetime.now().year
+            elif len(parts) == 3:
+                year, month, day = map(int, parts)
+            else:
+                raise ValueError("Unexpected number of parts")
+
+            date_obj = datetime(year, month, day).date()
         except ValueError:
-            print("Invalid date format. Please use YYYY-MM-DD.")
+            print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
             return
     else:
         date_obj = datetime.now().date()
