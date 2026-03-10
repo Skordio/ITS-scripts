@@ -73,6 +73,7 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
 def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
+    iata_code = iata_code.upper()
 
     # If not found in OpenFlights, allow manual entry and retry.
     if not airport_info:
