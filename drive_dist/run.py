@@ -7,6 +7,7 @@ import os
 import sys
 import re
 import math
+import urllib.parse
 
 # Ensure the workspace root is on sys.path so we can import tz_ez when running as a script.
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -61,10 +62,11 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
     for code in airport_codes:
         info = airport_data.get_airport_info(code.strip())
         if not info:
-            print(f"✗ Airport {code} not found in database")
-            return False
+            print(f"⚠️ Airport {code} not found in database; distances will be omitted but a Google Maps link will still be provided.")
+            airports[code.upper()] = {"name": code.upper(), "lat": None, "lon": None, "missing": True}
+            continue
         lat, lon, name = info
-        airports[code.upper()] = {"name": name, "lat": lat, "lon": lon}
+        airports[code.upper()] = {"name": name, "lat": lat, "lon": lon, "missing": False}
     
     # Display results
     print(f"\n{'='*80}")
@@ -82,18 +84,25 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
             airport1 = airports[code1]
             airport2 = airports[code2]
             
-            distance = haversine_distance(
-                airport1["lat"], airport1["lon"],
-                airport2["lat"], airport2["lon"]
-            )
-            
-            flight_hours, flight_minutes = estimate_flight_time(distance)
-            
             print(f"{code1} ({airport1['name']}) <-> {code2} ({airport2['name']})")
-            print(f"    Driving Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
-            print(f"    Estimated Flight Time: {flight_hours}h {flight_minutes}m")
+
+            if airport1.get("missing") or airport2.get("missing"):
+                print("    (Skipping distance calculation because airport coordinate data is missing.)")
+            else:
+                distance = haversine_distance(
+                    airport1["lat"], airport1["lon"],
+                    airport2["lat"], airport2["lon"]
+                )
+
+                flight_hours, flight_minutes = estimate_flight_time(distance)
+
+                print(f"    Driving Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
+                print(f"    Estimated Flight Time: {flight_hours}h {flight_minutes}m")
+
             print()
-            print(f"For a more accurate driving route, search Google Maps for: \n{code1} airport to {code2} airport")
+            maps_query = f"{code1} airport to {code2} airport"
+            maps_url = "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote_plus(maps_query)
+            print(f"For a more accurate driving route, open this Google Maps link:\n{maps_url}")
     
     print(f"{'='*80}")
     print("Note: Distances are estimated based on great-circle distance × 1.25")
