@@ -4,13 +4,19 @@ Requires: astral, timezonefinder, requests
 Install with: pip install astral timezonefinder requests
 """
 
+import argparse
 from datetime import datetime, timedelta
 from astral import LocationInfo
 from astral.sun import sun, sunrise, sunset, dawn, dusk
 from timezonefinder import TimezoneFinder
 import pytz
 
-from airport_data import AirportData
+try:
+    # When run as a module (python -m tz_ez_lib.run)
+    from .airport_data import AirportData
+except ImportError:
+    # When run directly (python tz_ez_lib/run.py)
+    from airport_data import AirportData
 
 
 def get_timezone(lat, lon):
@@ -70,7 +76,37 @@ def calculate_sun_times(lat, lon, tz_str, date=None):
         "sunset": sunset_time,
     }
 
-def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
+
+def parse_date(date_input: str):
+    """Parse a date string (YYYY-MM-DD or MM-DD) and return a date object."""
+    date_input = date_input.strip()
+    if not date_input:
+        return datetime.now().date()
+
+    if "-" in date_input:
+        parts = date_input.split("-")
+    elif "/" in date_input:
+        parts = date_input.split("/")
+    else:
+        raise ValueError("Invalid date format. Use YYYY-MM-DD or MM-DD.")
+
+    if len(parts) == 2:
+        month, day = map(int, parts)
+        year = datetime.now().year
+    elif len(parts) == 3:
+        year, month, day = map(int, parts)
+    else:
+        raise ValueError("Unexpected number of date parts.")
+
+    return datetime(year, month, day).date()
+
+
+def display_airport_info(
+    airport_data: AirportData,
+    iata_code: str,
+    date=None,
+    show_twilight: bool = True,
+):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
     iata_code = iata_code.upper()
@@ -146,8 +182,8 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
         print(f"Airport: {iata_code} - {name}")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print()
-        # Only show civil twilight if both dawn and dusk are available
-        if civil_dawn and civil_dusk:
+        # Only show civil twilight if requested and both dawn and dusk are available
+        if show_twilight and civil_dawn and civil_dusk:
             print(f"Civil Twilight Begin:    {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    Civil Twilight End:    {civil_dusk.strftime('%H:%M %Z')} ({format_gmt_time(civil_dusk)})")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)}){sunrise_note}    ->    1 Hour After Sunset:   {one_hr_after_sunset.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_after_sunset)}){sunset_note}")
@@ -162,6 +198,32 @@ def display_airport_info(airport_data: AirportData, iata_code: str, date=None):
 
 def main():
     """Main function."""
+    parser = argparse.ArgumentParser(
+        description="Airport Timezone and Dawn/Sunrise Information (uses OpenFlights airport database)"
+    )
+    parser.add_argument(
+        "-a",
+        "--airport",
+        "--airports",
+        nargs="+",
+        help="Airport codes (IATA 3-letter or ICAO 4-letter) to display info for.",
+    )
+    parser.add_argument(
+        "-d",
+        "--date",
+        help="Date to use (YYYY-MM-DD or MM-DD, current year assumed if omitted).",
+    )
+    parser.add_argument(
+        "-nt",
+        "--No-Twilight",
+        dest="no_twilight",
+        action="store_true",
+        help="Do not display civil twilight (dawn/dusk) times.",
+    )
+    args = parser.parse_args()
+
+    show_twilight = not args.no_twilight
+
     print("Airport Timezone and Dawn/Sunrise Information")
     print("-" * 60)
 
@@ -169,38 +231,50 @@ def main():
     if not airport_data.fetch_airport_data():
         return
 
+    date_obj = None
+    if args.date:
+        try:
+            date_obj = parse_date(args.date)
+        except ValueError as e:
+            print(f"✗ Invalid date: {e}")
+            return
+
+    if args.airport:
+        airports = [a.strip() for a in args.airport if a.strip()]
+        if not airports:
+            print("✗ No airport codes provided.")
+            return
+
+        successful = 0
+        for airport in airports:
+            if display_airport_info(airport_data, airport, date_obj, show_twilight=show_twilight):
+                successful += 1
+
+        print()
+        print(f"Processed {successful}/{len(airports)} airports successfully")
+        return
+
     while True:
         # Get user input
-        # Ask for date first
-        date_input = input("\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): ").strip()
-        if date_input.lower() in ("q", "quit", "exit"):
-            break
+        # Ask for date first (unless given on command line)
+        if date_obj is None:
+            date_input = input(
+                "\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): "
+            ).strip()
+            if date_input.lower() in ("q", "quit", "exit"):
+                break
 
-        if date_input:
-            try:
-                # Support YYYY-MM-DD (full year) or MM-DD (assumes current year)
-                if "-" in date_input:
-                    parts = date_input.split("-")
-                elif "/" in date_input:
-                    parts = date_input.split("/")
-                else:
-                    raise ValueError("Invalid delimiter")
-
-                if len(parts) == 2:
-                    # MM-DD (assume current year)
-                    month, day = map(int, parts)
-                    year = datetime.now().year
-                elif len(parts) == 3:
-                    year, month, day = map(int, parts)
-                else:
-                    raise ValueError("Unexpected number of parts")
-
-                date_obj = datetime(year, month, day).date()
-            except ValueError:
-                print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
-                continue
+            if date_input:
+                try:
+                    date_obj = parse_date(date_input)
+                except ValueError:
+                    print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
+                    continue
+            else:
+                date_obj = datetime.now().date()
         else:
-            date_obj = datetime.now().date()
+            # Use date provided via args for all iterations
+            print(f"Using date: {date_obj}")
 
         airports = airport_data.prompt_airports_from_user()
         if not airports:
@@ -213,7 +287,7 @@ def main():
         # Process each airport
         successful = 0
         for airport in airports:
-            if display_airport_info(airport_data, airport.strip(), date_obj):
+            if display_airport_info(airport_data, airport.strip(), date_obj, show_twilight=show_twilight):
                 successful += 1
 
         print()
@@ -222,6 +296,10 @@ def main():
         again = input("\nPress Enter to run again, or type 'q' to quit: ").strip().lower()
         if again in ("q", "quit", "exit"):
             break
+
+        # Reset date selection each iteration unless it was provided on the command-line
+        if args.date is None:
+            date_obj = None
 
 if __name__ == "__main__":
     main()
