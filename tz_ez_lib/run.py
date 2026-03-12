@@ -164,52 +164,64 @@ def main():
     """Main function."""
     print("Airport Timezone and Dawn/Sunrise Information")
     print("-" * 60)
-    
+
     airport_data = AirportData()
     if not airport_data.fetch_airport_data():
         return
 
-    # Get user input
-    # Ask for date first
-    date_input = input("\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today: ").strip()
-    if date_input:
-        try:
-            # Support YYYY-MM-DD (full year) or MM-DD (assumes current year)
-            if "-" in date_input:
-                parts = date_input.split("-")
-            elif "/" in date_input:
-                parts = date_input.split("/")
-            else:
-                raise ValueError("Invalid delimiter")
+    while True:
+        # Get user input
+        # Ask for date first
+        date_input = input("\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): ").strip()
+        if date_input.lower() in ("q", "quit", "exit"):
+            break
 
-            if len(parts) == 2:
-                # MM-DD (assume current year)
-                month, day = map(int, parts)
-                year = datetime.now().year
-            elif len(parts) == 3:
-                year, month, day = map(int, parts)
-            else:
-                raise ValueError("Unexpected number of parts")
+        if date_input:
+            try:
+                # Support YYYY-MM-DD (full year) or MM-DD (assumes current year)
+                if "-" in date_input:
+                    parts = date_input.split("-")
+                elif "/" in date_input:
+                    parts = date_input.split("/")
+                else:
+                    raise ValueError("Invalid delimiter")
 
-            date_obj = datetime(year, month, day).date()
-        except ValueError:
-            print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
-            return
-    else:
-        date_obj = datetime.now().date()
+                if len(parts) == 2:
+                    # MM-DD (assume current year)
+                    month, day = map(int, parts)
+                    year = datetime.now().year
+                elif len(parts) == 3:
+                    year, month, day = map(int, parts)
+                else:
+                    raise ValueError("Unexpected number of parts")
 
-    airports = airport_data.prompt_airports_from_user()
-    if not airports:
-        return
-    
-    # Process each airport
-    successful = 0
-    for airport in airports:
-        if display_airport_info(airport_data, airport.strip(), date_obj):
-            successful += 1
-    
-    print()
-    print(f"Processed {successful}/{len(airports)} airports successfully")
+                date_obj = datetime(year, month, day).date()
+            except ValueError:
+                print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
+                continue
+        else:
+            date_obj = datetime.now().date()
+
+        airports = airport_data.prompt_airports_from_user()
+        if not airports:
+            # If the user didn't enter any airports, offer to quit or retry.
+            cont = input("No airports entered. Press Enter to try again or type 'q' to quit: ").strip().lower()
+            if cont in ("q", "quit", "exit"):
+                break
+            continue
+
+        # Process each airport
+        successful = 0
+        for airport in airports:
+            if display_airport_info(airport_data, airport.strip(), date_obj):
+                successful += 1
+
+        print()
+        print(f"Processed {successful}/{len(airports)} airports successfully")
+
+        again = input("\nPress Enter to run again, or type 'q' to quit: ").strip().lower()
+        if again in ("q", "quit", "exit"):
+            break
 
 if __name__ == "__main__":
     main()
