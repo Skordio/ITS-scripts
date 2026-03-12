@@ -101,6 +101,12 @@ def parse_date(date_input: str):
     return datetime(year, month, day).date()
 
 
+def build_logging_night_url(airport: str, date: datetime):
+    """Build a URL for logging night data to a Google Form."""
+    url = f"https://loggingnight.org/?airport={airport}&date={date.year}-{date.month:02d}-{date.day:02d}"
+    return url
+
+
 def display_airport_info(
     airport_data: AirportData,
     iata_code: str,
@@ -181,6 +187,7 @@ def display_airport_info(
         print(f"\n{'='*60}")
         print(f"Airport: {iata_code} - {name}")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
+        print(f"Logging Night URL: {build_logging_night_url(iata_code, datetime(date_note.year, date_note.month, date_note.day))}")
         print()
         # Only show civil twilight if requested and both dawn and dusk are available
         if show_twilight and civil_dawn and civil_dusk:
