@@ -14,7 +14,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from tz_ez_lib.airport_data import AirportData
+from lib_tz_ez.airport_data import AirportData
 
 
 # The AirportData class replaces the old global cache and fetch logic.
