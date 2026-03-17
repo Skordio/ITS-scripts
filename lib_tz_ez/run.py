@@ -185,7 +185,7 @@ def display_airport_info(
 
         # Display info
         print(f"\n{'='*60}")
-        print(f"Airport: {iata_code} - {name}")
+        print(f"Airport: \033[96m{iata_code} - {name}\033[0m")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print(f"Logging Night URL: {build_logging_night_url(iata_code, datetime(date_note.year, date_note.month, date_note.day))}")
         print()
