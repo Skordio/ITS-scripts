@@ -79,7 +79,7 @@ class TimeDiffApp(tk.Tk):
 		clear_btn.grid(row=2, column=1, pady=8)
 
 		self.result_var = tk.StringVar(value="Time A - Time B = ")
-		result_label = tk.Label(frm, textvariable=self.result_var, fg="#8ecaff")
+		result_label = tk.Label(frm, textvariable=self.result_var, fg="#8ecaff", bg="#1e1e1e", font=("Arial", 10, "bold"))
 		result_label.grid(row=3, column=0, columnspan=2, pady=(4, 0))
 
 		# Bind Enter to calculate
