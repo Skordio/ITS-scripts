@@ -64,23 +64,25 @@ class TimeDiffApp(tk.Tk):
 		frm = tk.Frame(self, padx=10, pady=10)
 		frm.pack()
 
-		tk.Label(frm, text="Time A (HHMM or HH:MM):").grid(row=0, column=0, sticky="w")
-		self.a_entry = tk.Entry(frm, width=12)
-		self.a_entry.grid(row=0, column=1, padx=6, pady=4)
+		# self.helpmsg = tk.Label(frm, text="Time A is the earlier time, and Time B is the later time. \nThe calculator will not work properly otherwise.", fg="#8ecaff", bg="#1e1e1e", font=("Arial", 9, "bold")).grid(row=0, column=0, sticky="w")
 
-		tk.Label(frm, text="Time B (HHMM or HH:MM):").grid(row=1, column=0, sticky="w")
+		tk.Label(frm, text="Start Time (HHMM or HH:MM):").grid(row=1, column=0, sticky="w")
+		self.a_entry = tk.Entry(frm, width=12)
+		self.a_entry.grid(row=1, column=1, padx=6, pady=4)
+
+		tk.Label(frm, text="End Time (HHMM or HH:MM):").grid(row=2, column=0, sticky="w")
 		self.b_entry = tk.Entry(frm, width=12)
-		self.b_entry.grid(row=1, column=1, padx=6, pady=4)
+		self.b_entry.grid(row=2, column=1, padx=6, pady=4)
 
 		calc_btn = tk.Button(frm, text="Calculate", width=12, command=self.calculate)
-		calc_btn.grid(row=2, column=0, pady=8)
+		calc_btn.grid(row=3, column=0, pady=8)
 
 		clear_btn = tk.Button(frm, text="Clear", width=12, command=self.clear)
-		clear_btn.grid(row=2, column=1, pady=8)
+		clear_btn.grid(row=3, column=1, pady=8)
 
-		self.result_var = tk.StringVar(value="Time A - Time B = ")
+		self.result_var = tk.StringVar(value="Duration = ")
 		result_label = tk.Label(frm, textvariable=self.result_var, fg="#8ecaff", bg="#1e1e1e", font=("Arial", 10, "bold"))
-		result_label.grid(row=3, column=0, columnspan=2, pady=(4, 0))
+		result_label.grid(row=4, column=0, columnspan=2, pady=(4, 0))
 
 		# Bind Enter to calculate
 		self.bind('<Return>', lambda e: self.calculate())
@@ -95,17 +97,17 @@ class TimeDiffApp(tk.Tk):
 			messagebox.showerror("Invalid time", str(e))
 			return
 		
-		if ma < mb:
-			ma += 24 * 60  # Treat as next day
+		if mb < ma:
+			mb += 24 * 60  # Treat as next day
 
-		diff = abs(ma - mb)
+		diff = abs(mb-ma)
 		human = format_duration(diff)
-		self.result_var.set(f"Time A - Time B = {human} ({diff} minutes)")
+		self.result_var.set(f"Duration = {human} ({diff} minutes)")
 
 	def clear(self):
 		self.a_entry.delete(0, tk.END)
 		self.b_entry.delete(0, tk.END)
-		self.result_var.set("Time A - Time B = ")
+		self.result_var.set("Duration = ")
 
 
 def main():
