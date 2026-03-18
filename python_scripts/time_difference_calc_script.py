@@ -105,8 +105,8 @@ class TimeDiffApp(tk.Tk):
 		self.result_var.set(f"Duration = {human} ({diff} minutes)")
 
 	def clear(self):
-		self.a_entry.delete(0, tk.END)
 		self.b_entry.delete(0, tk.END)
+		self.a_entry.delete(0, tk.END)
 		self.result_var.set("Duration = ")
 
 
