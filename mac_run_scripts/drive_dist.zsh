@@ -8,11 +8,11 @@ cd "$SCRIPT_DIR"
 git pull -q
 
 # Activate virtualenv if present (POSIX path)
-if [ -f .venv/bin/activate ]; then
+if [ -f ../.venv/bin/activate ]; then
   # shellcheck source=/dev/null
   source ../.venvunix/bin/activate
 fi
 
 pip install -q -r ../requirements.txt
 
-python3 ../lib_tz_ez/run.py "$@"
+python3 ../lib_drive_dist/run.py "$@"
