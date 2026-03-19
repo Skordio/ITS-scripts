@@ -43,4 +43,7 @@ if ($env:VIRTUAL_ENV) {
     Write-Host "Ensuring requirements are installed..."
     pip install -q -r requirements.txt
 }
+
+Write-Host ""
+
 python3 programs/time_difference_calc.py @args
