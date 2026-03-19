@@ -32,28 +32,41 @@ def format_gmt_time(local_time):
         gmt_str += " *"
     return f"\033[92m{gmt_str}\033[0m"
 
-def calculate_sun_times(lat, lon, tz_str, date=None):
+def calculate_sun_times(lat, lon, tz_str, date=None, search_window_days: int = 1):
     """Calculate sunrise, sunset, and twilight times.
 
     Astral may raise a ValueError when dawn/dusk do not exist (e.g. polar day/night).
-    This function is resilient: it will try adjacent dates for sunrise/sunset and
-    will return None for civil twilight if it cannot be computed.
+    This function is resilient: it will try nearby dates for sunrise/sunset within
+    the configured search window and will return None for civil twilight if it
+    cannot be computed.
     """
     if date is None:
         date = datetime.now().date()
+    if search_window_days < 0:
+        raise ValueError("Sun search window must be 0 or greater.")
 
     # Create location info
     location = LocationInfo("Airport", "Region", timezone=tz_str, latitude=lat, longitude=lon)
 
     def _try_adjacent_dates(fn):
-        """Try to compute a sun time for the requested date, falling back to adjacent dates."""
-        for d in (date, date - timedelta(days=1), date + timedelta(days=1)):
+        """Try to compute a sun time for nearby dates within the configured search window."""
+        candidate_dates = [date]
+        for offset in range(1, search_window_days + 1):
+            candidate_dates.append(date - timedelta(days=offset))
+            candidate_dates.append(date + timedelta(days=offset))
+
+        last_error = None
+        for d in candidate_dates:
             try:
                 return fn(location.observer, date=d, tzinfo=tz_str)
-            except ValueError:
+            except ValueError as exc:
+                last_error = exc
                 continue
         # If we fall through, there was no valid time on any of the checked dates.
-        raise
+        raise ValueError(
+            f"No {fn.__name__} found within ±{search_window_days} day(s) of {date} "
+            f"for coordinates {lat}, {lon}."
+        ) from last_error
 
     # Compute sunrise/sunset (required). If it fails, let the caller handle it.
     sunrise_time = _try_adjacent_dates(sunrise)
@@ -112,6 +125,7 @@ def display_airport_info(
     iata_code: str,
     date=None,
     show_twilight: bool = True,
+    sun_search_window_days: int = 1,
 ):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
@@ -139,7 +153,13 @@ def display_airport_info(
             return False
 
         # Get sun times for requested date (None means today)
-        sun_times = calculate_sun_times(lat, lon, tz_str, date)
+        sun_times = calculate_sun_times(
+            lat,
+            lon,
+            tz_str,
+            date,
+            search_window_days=sun_search_window_days,
+        )
 
         # Create timezone-aware datetimes
         tz = pytz.timezone(tz_str)
@@ -227,9 +247,21 @@ def main():
         action="store_true",
         help="Do not display civil twilight (dawn/dusk) times.",
     )
+    parser.add_argument(
+        "--sun-search-window-days",
+        type=int,
+        default=1,
+        help=(
+            "Number of days before/after the requested date to search for sunrise/sunset "
+            "when the requested date has no result. Default: 1."
+        ),
+    )
     args = parser.parse_args()
 
     show_twilight = not args.no_twilight
+    if args.sun_search_window_days < 0:
+        print("✗ Invalid sun search window: value must be 0 or greater.")
+        return
 
     print("Airport Timezone and Dawn/Sunrise Information")
     print("-" * 60)
@@ -254,7 +286,13 @@ def main():
 
         successful = 0
         for airport in airports:
-            if display_airport_info(airport_data, airport, date_obj, show_twilight=show_twilight):
+            if display_airport_info(
+                airport_data,
+                airport,
+                date_obj,
+                show_twilight=show_twilight,
+                sun_search_window_days=args.sun_search_window_days,
+            ):
                 successful += 1
 
         print()
@@ -294,7 +332,13 @@ def main():
         # Process each airport
         successful = 0
         for airport in airports:
-            if display_airport_info(airport_data, airport.strip(), date_obj, show_twilight=show_twilight):
+            if display_airport_info(
+                airport_data,
+                airport.strip(),
+                date_obj,
+                show_twilight=show_twilight,
+                sun_search_window_days=args.sun_search_window_days,
+            ):
                 successful += 1
 
         print()
