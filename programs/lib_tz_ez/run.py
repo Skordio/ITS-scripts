@@ -114,6 +114,18 @@ def parse_date(date_input: str):
     return datetime(year, month, day).date()
 
 
+def parse_retry_input(retry_input: str):
+    """Interpret retry prompt input as quit, rerun, or a new date."""
+    retry_input = retry_input.strip()
+    if not retry_input:
+        return ("rerun", None)
+
+    if retry_input.lower() in ("q", "quit", "exit"):
+        return ("quit", None)
+
+    return ("date", parse_date(retry_input))
+
+
 def build_logging_night_url(airport: str, date: datetime):
     """Build a URL for logging night data to a Google Form."""
     url = f"https://loggingnight.org/?airport={airport}&date={date.year}-{date.month:02d}-{date.day:02d}"
@@ -344,13 +356,21 @@ def main():
         print()
         print(f"Processed {successful}/{len(airports)} airports successfully")
 
-        again = input("\nPress Enter to run again, or type 'q' to quit: ").strip().lower()
-        if again in ("q", "quit", "exit"):
+        again = input(
+            "\nPress Enter to run again, type a date (YYYY-MM-DD or MM-DD), or type 'q' to quit: "
+        )
+        try:
+            action, next_date = parse_retry_input(again)
+        except ValueError:
+            print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
+            continue
+
+        if action == "quit":
             break
 
-        # Reset date selection each iteration unless it was provided on the command-line
         if args.date is None:
-            date_obj = None
+            # A date entered at the retry prompt should carry into the next airport prompt.
+            date_obj = next_date if action == "date" else None
 
 if __name__ == "__main__":
     main()
