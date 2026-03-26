@@ -5,6 +5,8 @@ Install with: pip install astral timezonefinder requests
 """
 
 import argparse
+import os
+import sys
 from datetime import datetime, timedelta
 from astral import LocationInfo
 from astral.sun import sun, sunrise, sunset, dawn, dusk
@@ -19,6 +21,27 @@ except ImportError:
     from airport_data import AirportData
 
 
+def supports_color() -> bool:
+    """Return True when stdout appears to support ANSI colors."""
+    if os.getenv("NO_COLOR"):
+        return False
+    if os.getenv("FORCE_COLOR"):
+        return True
+    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
+        return False
+    return os.getenv("TERM", "").lower() != "dumb"
+
+
+USE_COLOR = supports_color()
+
+
+def colorize(text: str, ansi_code: str) -> str:
+    """Wrap text in ANSI color codes only when terminal color is supported."""
+    if not USE_COLOR:
+        return text
+    return f"\033[{ansi_code}m{text}\033[0m"
+
+
 def get_timezone(lat, lon):
     """Get timezone string from coordinates."""
     tf = TimezoneFinder()
@@ -30,7 +53,7 @@ def format_gmt_time(local_time):
     gmt_str = gmt_time.strftime('%H:%M GMT')
     if local_time.date() != gmt_time.date():
         gmt_str += " *"
-    return f"\033[92m{gmt_str}\033[0m"
+    return colorize(gmt_str, "92")
 
 def calculate_sun_times(lat, lon, tz_str, date=None, search_window_days: int = 1):
     """Calculate sunrise, sunset, and twilight times.
@@ -217,7 +240,7 @@ def display_airport_info(
 
         # Display info
         print(f"\n{'='*60}")
-        print(f"Airport: \033[96m{iata_code} - {name}\033[0m")
+        print(f"Airport: {colorize(f'{iata_code} - {name}', '96')}")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print(f"Logging Night URL: {build_logging_night_url(iata_code, datetime(date_note.year, date_note.month, date_note.day))}")
         print()
