@@ -138,10 +138,10 @@ def parse_date(date_input: str):
 
 
 def parse_retry_input(retry_input: str):
-    """Interpret retry prompt input as quit, rerun, or a new date."""
+    """Interpret retry prompt input as quit or a date (blank means today)."""
     retry_input = retry_input.strip()
     if not retry_input:
-        return ("rerun", None)
+        return ("date", datetime.now().date())
 
     if retry_input.lower() in ("q", "quit", "exit"):
         return ("quit", None)
@@ -380,7 +380,7 @@ def main():
         print(f"Processed {successful}/{len(airports)} airports successfully")
 
         again = input(
-            "\nPress Enter to run again, type a date (YYYY-MM-DD or MM-DD), or type 'q' to quit: "
+            "\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): "
         )
         try:
             action, next_date = parse_retry_input(again)
