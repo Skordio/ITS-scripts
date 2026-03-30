@@ -354,7 +354,8 @@ def main():
                 date_obj = datetime.now().date()
         else:
             # Use date provided via args for all iterations
-            print(f"Using date: {date_obj}")
+            # print(f"Using date: {date_obj}")
+            pass
 
         airports = airport_data.prompt_airports_from_user()
         if not airports:
