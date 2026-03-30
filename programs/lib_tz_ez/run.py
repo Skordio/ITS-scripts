@@ -114,7 +114,7 @@ def calculate_sun_times(lat, lon, tz_str, date=None, search_window_days: int = 1
 
 
 def parse_date(date_input: str):
-    """Parse a date string (YYYY-MM-DD or MM-DD) and return a date object."""
+    """Parse a date string (MM-DD-YYYY or MM-DD) and return a date object."""
     date_input = date_input.strip()
     if not date_input:
         return datetime.now().date()
@@ -124,13 +124,13 @@ def parse_date(date_input: str):
     elif "/" in date_input:
         parts = date_input.split("/")
     else:
-        raise ValueError("Invalid date format. Use YYYY-MM-DD or MM-DD.")
+        raise ValueError("Invalid date format. Use MM-DD-YYYY or MM-DD.")
 
     if len(parts) == 2:
         month, day = map(int, parts)
         year = datetime.now().year
     elif len(parts) == 3:
-        year, month, day = map(int, parts)
+        month, day, year = map(int, parts)
     else:
         raise ValueError("Unexpected number of date parts.")
 
@@ -273,7 +273,7 @@ def main():
     parser.add_argument(
         "-d",
         "--date",
-        help="Date to use (YYYY-MM-DD or MM-DD, current year assumed if omitted).",
+        help="Date to use (MM-DD-YYYY or MM-DD, current year assumed if omitted).",
     )
     parser.add_argument(
         "-nt",
@@ -339,7 +339,7 @@ def main():
         # Ask for date first (unless given on command line)
         if date_obj is None:
             date_input = input(
-                "\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): "
+                "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
             ).strip()
             if date_input.lower() in ("q", "quit", "exit"):
                 break
@@ -348,7 +348,7 @@ def main():
                 try:
                     date_obj = parse_date(date_input)
                 except ValueError:
-                    print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
+                    print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
                     continue
             else:
                 date_obj = datetime.now().date()
@@ -381,12 +381,12 @@ def main():
         print(f"Processed {successful}/{len(airports)} airports successfully")
 
         again = input(
-            "\nEnter a date (YYYY-MM-DD or MM-DD) or leave blank for today (or type 'q' to quit): "
+            "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
         )
         try:
             action, next_date = parse_retry_input(again)
         except ValueError:
-            print("Invalid date format. Please use YYYY-MM-DD or MM-DD.")
+            print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
             continue
 
         if action == "quit":
