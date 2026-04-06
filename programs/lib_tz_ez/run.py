@@ -16,9 +16,11 @@ import pytz
 try:
     # When run as a module (python -m tz_ez_lib.run)
     from .airport_data import AirportData
+    from .aircraft_data import AircraftData
 except ImportError:
     # When run directly (python tz_ez_lib/run.py)
     from airport_data import AirportData
+    from aircraft_data import AircraftData
 
 
 def supports_color() -> bool:
@@ -155,12 +157,20 @@ def build_logging_night_url(airport: str, date: datetime):
     return url
 
 
+def build_adsb_url(icao_hex: str, lat: float, lon: float, date: datetime) -> str:
+    """Build an ADS-B Exchange globe URL for a given aircraft, location, and date."""
+    date_str = f"{date.year}-{date.month:02d}-{date.day:02d}"
+    return f"https://globe.adsbexchange.com/?icao={icao_hex}&lat={lat:.3f}&lon={lon:.3f}&zoom=9.0&showTrace={date_str}"
+
+
 def display_airport_info(
     airport_data: AirportData,
     iata_code: str,
     date=None,
     show_twilight: bool = True,
     sun_search_window_days: int = 1,
+    aircraft: str | None = None,
+    aircraft_data: AircraftData | None = None,
 ):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
@@ -243,6 +253,12 @@ def display_airport_info(
         print(f"Airport: {colorize(f'{iata_code} - {name}', '96')}")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print(f"Logging Night URL: {build_logging_night_url(iata_code, datetime(date_note.year, date_note.month, date_note.day))}")
+        if aircraft and aircraft_data:
+            icao_hex = aircraft_data.get_icao(aircraft)
+            if icao_hex:
+                print(f"ADS-B Exchange URL: {build_adsb_url(icao_hex, lat, lon, datetime(date_note.year, date_note.month, date_note.day))}")
+            else:
+                print(f"✗ ADS-B URL: '{aircraft}' not found in FAA registry")
         print()
         # Only show civil twilight if requested and both dawn and dusk are available
         if show_twilight and civil_dawn and civil_dusk:
@@ -283,6 +299,12 @@ def main():
         help="Do not display civil twilight (dawn/dusk) times.",
     )
     parser.add_argument(
+        "-c",
+        "--aircraft",
+        default=None,
+        help="Aircraft N-number (e.g. N971MC) to generate an ADS-B Exchange URL (optional).",
+    )
+    parser.add_argument(
         "--sun-search-window-days",
         type=int,
         default=1,
@@ -304,6 +326,8 @@ def main():
     airport_data = AirportData()
     if not airport_data.fetch_airport_data():
         return
+
+    aircraft_data = AircraftData()
 
     date_obj = None
     if args.date:
@@ -327,6 +351,8 @@ def main():
                 date_obj,
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
+                aircraft=args.aircraft,
+                aircraft_data=aircraft_data,
             ):
                 successful += 1
 
@@ -357,6 +383,11 @@ def main():
             # print(f"Using date: {date_obj}")
             pass
 
+        aircraft_input = input(
+            "Enter aircraft N-number (optional, e.g. N971MC, or leave blank to skip): "
+        ).strip()
+        aircraft = aircraft_input if aircraft_input else None
+
         airports = airport_data.prompt_airports_from_user()
         if not airports:
             # If the user didn't enter any airports, offer to quit or retry.
@@ -374,6 +405,8 @@ def main():
                 date_obj,
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
+                aircraft=aircraft,
+                aircraft_data=aircraft_data,
             ):
                 successful += 1
 
