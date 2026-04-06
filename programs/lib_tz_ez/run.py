@@ -13,14 +13,14 @@ from astral.sun import sun, sunrise, sunset, dawn, dusk
 from timezonefinder import TimezoneFinder
 import pytz
 
+from icao_nnumber_converter_us import n_to_icao, icao_to_n
+
 try:
     # When run as a module (python -m tz_ez_lib.run)
     from .airport_data import AirportData
-    from .aircraft_data import AircraftData
 except ImportError:
     # When run directly (python tz_ez_lib/run.py)
     from airport_data import AirportData
-    from aircraft_data import AircraftData
 
 
 def supports_color() -> bool:
@@ -170,7 +170,6 @@ def display_airport_info(
     show_twilight: bool = True,
     sun_search_window_days: int = 1,
     aircraft: str | None = None,
-    aircraft_data: AircraftData | None = None,
 ):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
@@ -253,8 +252,8 @@ def display_airport_info(
         print(f"Airport: {colorize(f'{iata_code} - {name}', '96')}")
         print(f"Timezone: {tz_str} -> {tz_abbrev} ({gmt_offset}) for {date_note}")
         print(f"Logging Night URL: {build_logging_night_url(iata_code, datetime(date_note.year, date_note.month, date_note.day))}")
-        if aircraft and aircraft_data:
-            icao_hex = aircraft_data.get_icao(aircraft)
+        if aircraft:
+            icao_hex = n_to_icao(aircraft.upper())
             if icao_hex:
                 print(f"ADS-B Exchange URL: {build_adsb_url(icao_hex, lat, lon, datetime(date_note.year, date_note.month, date_note.day))}")
             else:
@@ -327,8 +326,6 @@ def main():
     if not airport_data.fetch_airport_data():
         return
 
-    aircraft_data = AircraftData()
-
     date_obj = None
     if args.date:
         try:
@@ -352,7 +349,6 @@ def main():
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=args.aircraft,
-                aircraft_data=aircraft_data,
             ):
                 successful += 1
 
@@ -406,7 +402,6 @@ def main():
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=aircraft,
-                aircraft_data=aircraft_data,
             ):
                 successful += 1
 
