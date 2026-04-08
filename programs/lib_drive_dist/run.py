@@ -3,6 +3,7 @@ Script to calculate driving distances between airports.
 Requires: tz_ez (for airport lookup data)
 """
 
+import argparse
 import os
 import sys
 import re
@@ -114,13 +115,33 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
 
 def main():
     """Main function."""
+    parser = argparse.ArgumentParser(
+        description="Airport Driving Distance Calculator (uses OpenFlights airport database)"
+    )
+    parser.add_argument(
+        "-a",
+        "--airport",
+        "--airports",
+        nargs="+",
+        help="Airport codes (IATA 3-letter or ICAO 4-letter) to calculate distances between.",
+    )
+    args = parser.parse_args()
+
     print("Airport Driving Distance Calculator")
     print("-" * 60)
-    
+
     airport_data = AirportData()
     if not airport_data.fetch_airport_data():
         return
-    
+
+    if args.airport:
+        airports = [a.strip() for a in args.airport if a.strip()]
+        if not airports:
+            print("✗ No airport codes provided.")
+            return
+        display_airport_distances(airport_data, airports)
+        return
+
     # Ignore non-letter characters
     airports = airport_data.prompt_airports_from_user()
 
