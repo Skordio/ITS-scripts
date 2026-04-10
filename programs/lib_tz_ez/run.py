@@ -23,6 +23,16 @@ except ImportError:
     from airport_data import AirportData
 
 
+def print_title():
+    title = """
+ _____      _____
+|_   _|___ | ____|____
+  | ||_  / |  _| |_  /
+  | | / /  | |___ / /
+  |_|/___| |_____/___|
+"""
+    print(title)
+
 def supports_color() -> bool:
     """Return True when stdout appears to support ANSI colors."""
     if os.getenv("NO_COLOR"):
@@ -319,7 +329,7 @@ def main():
         print("✗ Invalid sun search window: value must be 0 or greater.")
         return
 
-    print("Airport Timezone and Dawn/Sunrise Information")
+    print_title()
     print("-" * 60)
 
     airport_data = AirportData()
