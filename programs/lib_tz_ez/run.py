@@ -49,13 +49,13 @@ def get_timezone(lat, lon):
     tf = TimezoneFinder()
     return tf.timezone_at(lat=lat, lng=lon)
 
-def format_gmt_time(local_time):
+def format_gmt_time(local_time, colorize_response=True):
     """Format GMT time with day indicator if different day."""
     gmt_time = local_time.astimezone(pytz.UTC)
     gmt_str = gmt_time.strftime('%H:%M GMT')
     if local_time.date() != gmt_time.date():
         gmt_str += " *"
-    return colorize(gmt_str, "92")
+    return colorize(gmt_str, "92") if colorize_response else gmt_str
 
 def calculate_sun_times(lat, lon, tz_str, date=None, search_window_days: int = 1):
     """Calculate sunrise, sunset, and twilight times.
@@ -261,7 +261,7 @@ def display_airport_info(
         print()
         # Only show civil twilight if requested and both dawn and dusk are available
         if show_twilight and civil_dawn and civil_dusk:
-            print(f" Civil Twilight Begin:   {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn)})    ->    ({format_gmt_time(civil_dusk)}) {civil_dusk.strftime('%H:%M %Z')}    :Civil Twilight End")
+            print(f" Civil Twilight Begin:   {civil_dawn.strftime('%H:%M %Z')} ({format_gmt_time(civil_dawn, False)})    ->    ({format_gmt_time(civil_dusk, False)}) {civil_dusk.strftime('%H:%M %Z')}    :Civil Twilight End")
         # print(f"Sunrise:               {sunrise.strftime('%H:%M:%S %Z')} ({sunrise.astimezone(pytz.UTC).strftime('%H:%M:%S GMT')})")
         print(f"1 Hour Before Sunrise:   {one_hr_before_sunrise.strftime('%H:%M %Z')} ({format_gmt_time(one_hr_before_sunrise)}){sunrise_note}    ->    ({format_gmt_time(one_hr_after_sunset)}){sunset_note} {one_hr_after_sunset.strftime('%H:%M %Z')}    :1 Hour After Sunset")
         # print(f"{'='*60}")
