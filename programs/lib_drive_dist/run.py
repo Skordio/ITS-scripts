@@ -3,6 +3,7 @@ Script to calculate driving distances between airports.
 Requires: tz_ez (for airport lookup data)
 """
 
+import argparse
 import os
 import sys
 import re
@@ -37,7 +38,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     # Approximate driving distance as 1.25x the straight-line distance
     driving_distance = distance * 1.25
     
-    return driving_distance
+    return distance, driving_distance
 
 def estimate_flight_time(distance_miles):
     """
@@ -89,14 +90,15 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
             if airport1.get("missing") or airport2.get("missing"):
                 print("    (Skipping distance calculation because airport coordinate data is missing.)")
             else:
-                distance = haversine_distance(
+                distance, driving_distance = haversine_distance(
                     airport1["lat"], airport1["lon"],
                     airport2["lat"], airport2["lon"]
                 )
 
                 flight_hours, flight_minutes = estimate_flight_time(distance)
 
-                print(f"    Driving Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
+                print(f"    Straight-line Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
+                print(f"    Estimated Driving Distance: {driving_distance:.1f} miles ({driving_distance * 1.609:.1f} km)")
                 print(f"    Estimated Flight Time: {flight_hours}h {flight_minutes}m")
 
             print()
@@ -114,13 +116,33 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
 
 def main():
     """Main function."""
+    parser = argparse.ArgumentParser(
+        description="Airport Driving Distance Calculator (uses OpenFlights airport database)"
+    )
+    parser.add_argument(
+        "-a",
+        "--airport",
+        "--airports",
+        nargs="+",
+        help="Airport codes (IATA 3-letter or ICAO 4-letter) to calculate distances between.",
+    )
+    args = parser.parse_args()
+
     print("Airport Driving Distance Calculator")
     print("-" * 60)
-    
+
     airport_data = AirportData()
     if not airport_data.fetch_airport_data():
         return
-    
+
+    if args.airport:
+        airports = [a.strip() for a in args.airport if a.strip()]
+        if not airports:
+            print("✗ No airport codes provided.")
+            return
+        display_airport_distances(airport_data, airports)
+        return
+
     # Ignore non-letter characters
     airports = airport_data.prompt_airports_from_user()
 
