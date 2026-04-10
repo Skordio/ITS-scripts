@@ -38,7 +38,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     # Approximate driving distance as 1.25x the straight-line distance
     driving_distance = distance * 1.25
     
-    return driving_distance
+    return distance, driving_distance
 
 def estimate_flight_time(distance_miles):
     """
@@ -90,14 +90,15 @@ def display_airport_distances(airport_data: AirportData, airport_codes):
             if airport1.get("missing") or airport2.get("missing"):
                 print("    (Skipping distance calculation because airport coordinate data is missing.)")
             else:
-                distance = haversine_distance(
+                distance, driving_distance = haversine_distance(
                     airport1["lat"], airport1["lon"],
                     airport2["lat"], airport2["lon"]
                 )
 
                 flight_hours, flight_minutes = estimate_flight_time(distance)
 
-                print(f"    Driving Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
+                print(f"    Straight-line Distance: {distance:.1f} miles ({distance * 1.609:.1f} km)")
+                print(f"    Estimated Driving Distance: {driving_distance:.1f} miles ({driving_distance * 1.609:.1f} km)")
                 print(f"    Estimated Flight Time: {flight_hours}h {flight_minutes}m")
 
             print()
