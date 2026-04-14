@@ -170,7 +170,7 @@ def build_logging_night_url(airport: str, date: datetime):
 def build_adsb_url(icao_hex: str, lat: float, lon: float, date: datetime) -> str:
     """Build an ADS-B Exchange globe URL for a given aircraft, location, and date."""
     date_str = f"{date.year}-{date.month:02d}-{date.day:02d}"
-    return f"https://globe.adsbexchange.com/?icao={icao_hex}&lat={lat:.3f}&lon={lon:.3f}&zoom=9.0&showTrace={date_str}"
+    return f"https://globe.adsbexchange.com/?icao={icao_hex}&lat={lat:.3f}&lon={lon:.3f}&zoom=12.2&showTrace={date_str}"
 
 
 def display_airport_info(
