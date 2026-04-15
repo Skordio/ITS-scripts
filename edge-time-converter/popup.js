@@ -20,7 +20,7 @@ function setStatus(text, isError = false) {
       func: () => !!window.__gmtInterval,
     });
     toggle.checked = results?.[0]?.result ?? false;
-    if (toggle.checked) setStatus('Running. Converts every 20s.');
+    if (toggle.checked) setStatus('Running');
   } catch {
     toggle.checked = false;
   }
@@ -37,7 +37,7 @@ toggle.addEventListener('change', async () => {
         target: { tabId: tab.id },
         files: ['start_interval.js'],
       });
-      setStatus('Running. Converts every 20s.');
+      setStatus('Running');
     } else {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
