@@ -78,7 +78,14 @@
     for (const textNode of nodes) {
       const original = textNode.nodeValue;
       const replaced = replacer(original);
-      if (replaced !== original) textNode.nodeValue = replaced;
+      if (replaced !== original) {
+        // Store the original only on first conversion; subsequent passes keep
+        // the first-seen value so we can always restore to what the page had.
+        if (!window.__gmtOriginals.has(textNode)) {
+          window.__gmtOriginals.set(textNode, original);
+        }
+        textNode.nodeValue = replaced;
+      }
     }
   }
 
@@ -212,6 +219,8 @@
   if (window.__gmtObserver) {
     window.__gmtObserver.disconnect();
   }
+  // Reset the originals map each time the extension is enabled.
+  window.__gmtOriginals = new Map();
 
   // Initial pass — build converters now; on LoggingNight they may not be ready
   // yet if the page is still loading, so we fall back gracefully.
@@ -239,8 +248,14 @@
             targets.add(node.parentElement);
           }
         });
-      } else if (mutation.type === 'characterData' && mutation.target.parentElement) {
-        targets.add(mutation.target.parentElement);
+      } else if (mutation.type === 'characterData') {
+        const node = mutation.target;
+        // If the page rewrote a text node we own, update our stored original to
+        // the page's new value before we re-convert it below.
+        if (window.__gmtOriginals.has(node)) {
+          window.__gmtOriginals.set(node, node.nodeValue);
+        }
+        if (node.parentElement) targets.add(node.parentElement);
       }
     }
 
