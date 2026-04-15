@@ -81,32 +81,57 @@
     let node;
     while ((node = walker.nextNode())) nodes.push(node);
 
-    let count = 0;
     for (const textNode of nodes) {
       TIME_RE.lastIndex = 0;
       const original = textNode.nodeValue;
       const replaced = original.replace(TIME_RE, (match, hh, mm, ampm, tz) => {
         const gmt = toGMT(hh, mm, ampm, tz);
-        if (gmt === null) return match;
-        count++;
-        return gmt;
+        return gmt ?? match;
       });
       if (replaced !== original) {
         textNode.nodeValue = replaced;
       }
     }
-    return count;
   }
 
-  function convertAll() {
-    walkTextNodes(document.body);
+  // Stop any previously running observer before starting a new one.
+  if (window.__gmtObserver) {
+    window.__gmtObserver.disconnect();
   }
 
-  // Clear any previously running interval before starting a new one.
-  if (window.__gmtInterval) {
-    clearInterval(window.__gmtInterval);
-  }
+  // Initial pass over the full page.
+  walkTextNodes(document.body);
 
-  convertAll();
-  window.__gmtInterval = setInterval(convertAll, 20000);
+  const observerConfig = { childList: true, subtree: true, characterData: true };
+
+  window.__gmtObserver = new MutationObserver((mutations) => {
+    // Disconnect before mutating to prevent our own changes from re-triggering.
+    window.__gmtObserver.disconnect();
+
+    // Collect the minimal set of roots to re-walk.
+    const targets = new Set();
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            targets.add(node);
+          } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
+            targets.add(node.parentElement);
+          }
+        });
+      } else if (mutation.type === 'characterData' && mutation.target.parentElement) {
+        targets.add(mutation.target.parentElement);
+      }
+    }
+
+    for (const target of targets) {
+      if (document.body.contains(target)) {
+        walkTextNodes(target);
+      }
+    }
+
+    window.__gmtObserver.observe(document.body, observerConfig);
+  });
+
+  window.__gmtObserver.observe(document.body, observerConfig);
 })();

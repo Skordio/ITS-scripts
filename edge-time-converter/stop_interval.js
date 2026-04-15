@@ -1,4 +1,4 @@
-if (window.__gmtInterval) {
-  clearInterval(window.__gmtInterval);
-  window.__gmtInterval = null;
+if (window.__gmtObserver) {
+  window.__gmtObserver.disconnect();
+  window.__gmtObserver = null;
 }

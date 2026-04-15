@@ -17,7 +17,7 @@ function setStatus(text, isError = false) {
     const tab = await getActiveTab();
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => !!window.__gmtInterval,
+      func: () => !!window.__gmtObserver,
     });
     toggle.checked = results?.[0]?.result ?? false;
     if (toggle.checked) setStatus('Running');
