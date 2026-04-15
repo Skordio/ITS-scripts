@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "GMT Time Converter",
+  "version": "1.0",
+  "description": "Converts times like 10:28AM MDT on the page to GMT.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Convert Times to GMT",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": []
+}
