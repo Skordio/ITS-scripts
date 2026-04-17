@@ -206,7 +206,7 @@ def display_airport_info(
     show_twilight: bool = True,
     sun_search_window_days: int = 1,
     aircraft: str | None = None,
-    aircraft_data: AircraftData | None = None,
+    # aircraft_data: str | None = None,
     open_adsb: bool = False,
 ):
     """Fetch and display info for an airport on a given date."""
@@ -442,7 +442,7 @@ def main():
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=args.aircraft,
-                aircraft_data=aircraft_data,
+                # aircraft_data=aircraft_data,
                 open_adsb=args.open_adsb,
             ):
                 successful += 1
@@ -497,7 +497,7 @@ def main():
                 show_twilight=show_twilight,
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=aircraft,
-                aircraft_data=aircraft_data,
+                # aircraft_data=aircraft_data,
                 open_adsb=args.open_adsb,
             ):
                 successful += 1
