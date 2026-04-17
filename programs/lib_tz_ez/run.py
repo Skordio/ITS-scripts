@@ -5,8 +5,10 @@ Install with: pip install astral timezonefinder requests
 """
 
 import argparse
+import json
 import os
 import sys
+import webbrowser
 from datetime import datetime, timedelta
 from astral import LocationInfo
 from astral.sun import sun, sunrise, sunset, dawn, dusk
@@ -21,6 +23,31 @@ except ImportError:
     # When run directly (python tz_ez_lib/run.py)
     from airport_data import AirportData
     from aircraft_data import AircraftData
+
+
+_DEFAULTS_FILE = os.path.join(os.path.dirname(__file__), "user_defaults.json")
+# Keys that are never saved as defaults (they are one-shot actions or per-run inputs).
+_NEVER_SAVE = {"save_defaults", "clear_defaults", "date", "airport"}
+
+
+def load_defaults() -> dict:
+    """Return saved default arg values, or an empty dict if none are saved."""
+    if os.path.exists(_DEFAULTS_FILE):
+        try:
+            with open(_DEFAULTS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_defaults(explicit: dict) -> None:
+    """Persist a dict of arg values to the defaults file."""
+    try:
+        with open(_DEFAULTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(explicit, f, indent=2)
+    except Exception as e:
+        print(f"⚠ Could not save defaults: {e}")
 
 
 def supports_color() -> bool:
@@ -171,6 +198,7 @@ def display_airport_info(
     sun_search_window_days: int = 1,
     aircraft: str | None = None,
     aircraft_data: AircraftData | None = None,
+    open_adsb: bool = False,
 ):
     """Fetch and display info for an airport on a given date."""
     airport_info = airport_data.get_airport_info(iata_code)
@@ -256,7 +284,12 @@ def display_airport_info(
         if aircraft and aircraft_data:
             icao_hex = aircraft_data.get_icao(aircraft)
             if icao_hex:
-                print(f"ADS-B Exchange URL: {build_adsb_url(icao_hex, lat, lon, datetime(date_note.year, date_note.month, date_note.day))}")
+                adsb_url = build_adsb_url(icao_hex, lat, lon, datetime(date_note.year, date_note.month, date_note.day))
+                if open_adsb:
+                    webbrowser.open(adsb_url)
+                    print(f"ADS-B Exchange: opened in browser ({adsb_url})")
+                else:
+                    print(f"ADS-B Exchange URL: {adsb_url}")
             else:
                 print(f"✗ ADS-B URL: '{aircraft}' not found in FAA registry")
         print()
@@ -305,6 +338,13 @@ def main():
         help="Aircraft N-number (e.g. N971MC) to generate an ADS-B Exchange URL (optional).",
     )
     parser.add_argument(
+        "-o",
+        "--open-adsb",
+        dest="open_adsb",
+        action="store_true",
+        help="Open ADS-B Exchange links in the browser instead of printing them.",
+    )
+    parser.add_argument(
         "--sun-search-window-days",
         type=int,
         default=1,
@@ -313,7 +353,50 @@ def main():
             "when the requested date has no result. Default: 1."
         ),
     )
+    parser.add_argument(
+        "--save-defaults",
+        dest="save_defaults",
+        action="store_true",
+        help="Save the current arguments as defaults for future runs.",
+    )
+    parser.add_argument(
+        "--clear-defaults",
+        dest="clear_defaults",
+        action="store_true",
+        help="Clear all saved default arguments.",
+    )
+
+    # Apply any previously saved defaults before parsing.
+    saved = load_defaults()
+    if saved:
+        parser.set_defaults(**saved)
+
+    # Parse with a clean copy of defaults so we can detect what was explicitly
+    # passed on this invocation (for --save-defaults).
+    bare_defaults = vars(parser.parse_args([]))
     args = parser.parse_args()
+
+    # --clear-defaults: wipe the file and exit.
+    if args.clear_defaults:
+        if os.path.exists(_DEFAULTS_FILE):
+            os.remove(_DEFAULTS_FILE)
+            print("Defaults cleared.")
+        else:
+            print("No saved defaults to clear.")
+        return
+
+    # --save-defaults: persist args that differ from argparse's bare defaults.
+    if args.save_defaults:
+        current = vars(args)
+        to_save = {
+            k: v for k, v in current.items()
+            if k not in _NEVER_SAVE and v != bare_defaults.get(k)
+        }
+        save_defaults(to_save)
+        if to_save:
+            print(f"Defaults saved: {to_save}")
+        else:
+            print("No non-default arguments to save.")
 
     show_twilight = not args.no_twilight
     if args.sun_search_window_days < 0:
@@ -353,6 +436,7 @@ def main():
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=args.aircraft,
                 aircraft_data=aircraft_data,
+                open_adsb=args.open_adsb,
             ):
                 successful += 1
 
@@ -407,6 +491,7 @@ def main():
                 sun_search_window_days=args.sun_search_window_days,
                 aircraft=aircraft,
                 aircraft_data=aircraft_data,
+                open_adsb=args.open_adsb,
             ):
                 successful += 1
 
