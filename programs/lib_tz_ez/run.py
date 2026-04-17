@@ -474,10 +474,13 @@ def main():
             # print(f"Using date: {date_obj}")
             pass
 
-        aircraft_input = input(
-            "Enter aircraft N-number (optional, e.g. N971MC, or leave blank to skip): "
-        ).strip()
-        aircraft = aircraft_input if aircraft_input else None
+        if args.aircraft is not None:
+            aircraft = args.aircraft
+        else:
+            aircraft_input = input(
+                "Enter aircraft N-number (optional, e.g. N971MC, or leave blank to skip): "
+            ).strip()
+            aircraft = aircraft_input if aircraft_input else None
 
         airports = airport_data.prompt_airports_from_user()
         if not airports:

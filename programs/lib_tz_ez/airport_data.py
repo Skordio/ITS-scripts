@@ -129,7 +129,7 @@ class AirportData:
             if icao_attempt in self._airport_cache:
                 return self._airport_cache[icao_attempt]
 
-        return self._airport_cache.get(iata_upper)
+        return self._airport_cache.get(iata_upper)  # falls back to direct IATA lookup for international airports
 
     def prompt_add_airport(
         self,
@@ -171,7 +171,7 @@ class AirportData:
     def prompt_airports_from_user(self, input_func=input, print_func=print) -> list[str] | None:
         """Ask the user for a list of airport codes and return a cleaned list."""
         airport_list = input_func(
-            "\nEnter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): "
+            "Enter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): "
         ).strip()
         airport_list = re.sub(r"[^a-zA-Z0-9\s]", " ", airport_list)
         if not airport_list:
