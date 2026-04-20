@@ -7,6 +7,7 @@ is always a positive duration shown as H hours M minutes and total minutes.
 """
 
 import re
+import signal
 import sys
 import tkinter as tk
 from tkinter import messagebox
@@ -112,6 +113,11 @@ class TimeDiffApp(tk.Tk):
 
 def main():
 	app = TimeDiffApp()
+	signal.signal(signal.SIGINT, lambda *_: app.destroy())
+	# Periodic no-op so Python's signal handler runs even during the Tk event loop
+	def _poll():
+		app.after(200, _poll)
+	app.after(200, _poll)
 	app.mainloop()
 
 

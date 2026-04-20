@@ -451,78 +451,81 @@ def main():
         print(f"Processed {successful}/{len(airports)} airports successfully")
         return
 
-    while True:
-        # Get user input
-        # Ask for date first (unless given on command line)
-        if date_obj is None:
-            date_input = input(
-                "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
-            ).strip()
-            if date_input.lower() in ("q", "quit", "exit"):
-                break
+    try:
+        while True:
+            # Get user input
+            # Ask for date first (unless given on command line)
+            if date_obj is None:
+                date_input = input(
+                    "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
+                ).strip()
+                if date_input.lower() in ("q", "quit", "exit"):
+                    break
 
-            if date_input:
-                try:
-                    date_obj = parse_date(date_input)
-                except ValueError:
-                    print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
-                    continue
+                if date_input:
+                    try:
+                        date_obj = parse_date(date_input)
+                    except ValueError:
+                        print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
+                        continue
+                else:
+                    date_obj = datetime.now().date()
             else:
-                date_obj = datetime.now().date()
-        else:
-            # Use date provided via args for all iterations
-            # print(f"Using date: {date_obj}")
-            pass
+                # Use date provided via args for all iterations
+                # print(f"Using date: {date_obj}")
+                pass
 
-        if args.aircraft is not None:
-            aircraft = args.aircraft
-        else:
-            aircraft_input = input(
-                "Enter aircraft N-number (optional, e.g. N971MC, or leave blank to skip): "
-            ).strip()
-            aircraft = aircraft_input if aircraft_input else None
+            if args.aircraft is not None:
+                aircraft = args.aircraft
+            else:
+                aircraft_input = input(
+                    "Enter aircraft N-number (optional, e.g. N971MC, or leave blank to skip): "
+                ).strip()
+                aircraft = aircraft_input if aircraft_input else None
 
-        airports = airport_data.prompt_airports_from_user()
-        if not airports:
-            # If the user didn't enter any airports, offer to quit or retry.
-            cont = input("No airports entered. Press Enter to try again or type 'q' to quit: ").strip().lower()
-            if cont in ("q", "quit", "exit"):
+            airports = airport_data.prompt_airports_from_user()
+            if not airports:
+                # If the user didn't enter any airports, offer to quit or retry.
+                cont = input("No airports entered. Press Enter to try again or type 'q' to quit: ").strip().lower()
+                if cont in ("q", "quit", "exit"):
+                    break
+                continue
+
+            # Process each airport
+            successful = 0
+            for airport in airports:
+                if display_airport_info(
+                    airport_data,
+                    airport.strip(),
+                    date_obj,
+                    show_twilight=show_twilight,
+                    sun_search_window_days=args.sun_search_window_days,
+                    aircraft=aircraft,
+                    # aircraft_data=aircraft_data,
+                    open_adsb=args.open_adsb,
+                ):
+                    successful += 1
+
+            print()
+            print(f"Processed {successful}/{len(airports)} airports successfully")
+
+            again = input(
+                "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
+            )
+            try:
+                action, next_date = parse_retry_input(again)
+            except ValueError:
+                print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
+                continue
+
+            if action == "quit":
                 break
-            continue
 
-        # Process each airport
-        successful = 0
-        for airport in airports:
-            if display_airport_info(
-                airport_data,
-                airport.strip(),
-                date_obj,
-                show_twilight=show_twilight,
-                sun_search_window_days=args.sun_search_window_days,
-                aircraft=aircraft,
-                # aircraft_data=aircraft_data,
-                open_adsb=args.open_adsb,
-            ):
-                successful += 1
-
-        print()
-        print(f"Processed {successful}/{len(airports)} airports successfully")
-
-        again = input(
-            "\nEnter a date (MM-DD-YYYY or MM-DD) or leave blank for today (or type 'q' to quit): "
-        )
-        try:
-            action, next_date = parse_retry_input(again)
-        except ValueError:
-            print("Invalid date format. Please use MM-DD-YYYY or MM-DD.")
-            continue
-
-        if action == "quit":
-            break
-
-        if args.date is None:
-            # A date entered at the retry prompt should carry into the next airport prompt.
-            date_obj = next_date if action == "date" else None
+            if args.date is None:
+                # A date entered at the retry prompt should carry into the next airport prompt.
+                date_obj = next_date if action == "date" else None
+    except KeyboardInterrupt:
+        print("\nExiting.")
 
 if __name__ == "__main__":
     main()

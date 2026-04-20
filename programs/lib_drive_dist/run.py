@@ -144,7 +144,11 @@ def main():
         return
 
     # Ignore non-letter characters
-    airports = airport_data.prompt_airports_from_user()
+    try:
+        airports = airport_data.prompt_airports_from_user()
+    except KeyboardInterrupt:
+        print("\nExiting.")
+        return
 
     if not airports:
         print("No airports entered. Exiting.")

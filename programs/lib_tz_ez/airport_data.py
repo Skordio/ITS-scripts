@@ -140,14 +140,22 @@ class AirportData:
         """Prompt the user to manually add an airport when not found."""
         iata_code = iata_code.strip().upper()
         print_func(f"\nAirport '{iata_code}' not found in database.")
-        resp = input_func("Would you like to add it manually? (y/N): ").strip().lower()
+        try:
+            resp = input_func("Would you like to add it manually? (y/N): ").strip().lower()
+        except KeyboardInterrupt:
+            print()
+            raise
         if resp not in ("y", "yes"):
             return False
 
         while True:
-            coords = input_func(
-                "Enter latitude and longitude separated by a comma (e.g. 40.6413,-73.7781), or leave blank to cancel: "
-            ).strip()
+            try:
+                coords = input_func(
+                    "Enter latitude and longitude separated by a comma (e.g. 40.6413,-73.7781), or leave blank to cancel: "
+                ).strip()
+            except KeyboardInterrupt:
+                print()
+                raise
             if not coords:
                 return False
             parts = [p.strip() for p in coords.split(",") if p.strip()]
@@ -161,7 +169,11 @@ class AirportData:
             except ValueError:
                 print_func("Invalid coordinates. Please enter numeric latitude and longitude.")
 
-        name = input_func("Optional airport name (press Enter to skip): ").strip()
+        try:
+            name = input_func("Optional airport name (press Enter to skip): ").strip()
+        except KeyboardInterrupt:
+            print()
+            raise
         name = name or iata_code
         self._airport_cache[iata_code] = (lat, lon, name)
         self.save_user_airport(iata_code, lat, lon, name)
@@ -170,9 +182,13 @@ class AirportData:
 
     def prompt_airports_from_user(self, input_func=input, print_func=print) -> list[str] | None:
         """Ask the user for a list of airport codes and return a cleaned list."""
-        airport_list = input_func(
-            "Enter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): "
-        ).strip()
+        try:
+            airport_list = input_func(
+                "Enter airport codes separated by spaces (IATA 3-letter or ICAO 4-letter codes, e.g., JFK KJFK LAX KLAX): "
+            ).strip()
+        except KeyboardInterrupt:
+            print()
+            raise
         airport_list = re.sub(r"[^a-zA-Z0-9\s]", " ", airport_list)
         if not airport_list:
             print_func("No airports entered. Exiting.")
